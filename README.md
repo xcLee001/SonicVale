@@ -4,7 +4,8 @@
 > 免费使用，前后端代码全部开源。
 
 ---
-
+## 📝 详细使用文档
+[音谷 - AI 多角色多情绪配音平台使用教程](https://sw4s2hg7k5y.feishu.cn/wiki/WjbUw1t7JiWIa7k2pFXcxqSbnde?from=from_copylink)
 ## 📖 软件简介
 - **软件名称**：音谷 - AI 多角色多情绪配音平台  
 - **定位**：为小说、剧本、视频等内容提供多角色、多情绪的 AI 语音合成与配音服务  
@@ -15,6 +16,7 @@
   - 台词自动拆分与配音生成
   - 批量任务管理与导出
   - 支持自定义 LLM 接口选择与调用
+  - 基于Index-TTS-2.0的多情绪TTS服务
 ## 🛠 技术栈
 - **前端**：Electron + Vue + Element Plus  
 - **后端**：FastAPI / Python
