@@ -1,0 +1,63 @@
+{
+  "name": "sonicvale",
+  "productName": "音谷",
+  "version": "1.0.1",
+  "author": "lxc",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "start": "concurrently \"npm run dev\" \"npm run electron\"",
+    "electron-build": "vite build && electron-builder"
+  },
+  "build": {
+    "appId": "com.example.yingu",
+    "copyright": "Copyright © 2025 lxc",
+    "productName": "音谷",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "electron/**/*.exe"
+    ],
+    "win": {
+      "icon": "resource/icon/yingu.ico",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    }
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "axios": "^1.11.0",
+    "electron-log": "^5.4.3",
+    "element-plus": "^2.11.1",
+    "iconv-lite": "^0.7.0",
+    "sortablejs": "^1.15.6",
+    "vue": "^3.5.18",
+    "vue-router": "^4.5.1",
+    "wavesurfer.js": "^7.10.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "concurrently": "^9.2.0",
+    "electron": "^37.3.1",
+    "electron-builder": "^26.0.12",
+    "vite": "^7.1.2"
+  }
+}

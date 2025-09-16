@@ -1,0 +1,26 @@
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# JetBrains IDE
+.idea/
+
+# venv
+.venv/
+env/
+venv/
+
+
+# 打包输出
+dist
+build
+*.spec
+*.exe
+
+# logs
+*.log
+
+# others
+.DS_Store

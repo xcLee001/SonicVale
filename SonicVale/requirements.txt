@@ -1,0 +1,9 @@
+fastapi==0.116.1
+numpy==2.3.3
+openai==0.28.0
+pydantic==2.11.9
+Requests==2.32.5
+soundfile==0.13.1
+SQLAlchemy==2.0.43
+starlette==0.48.0
+uvicorn==0.35.0
