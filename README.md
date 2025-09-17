@@ -128,7 +128,7 @@ TTS 配置界面
 
 ## 📜 协议
 
-本项目采用 GNU Affero General Public License v3.0 (AGPL-3.0) 开源协议。
+本项目采用 [GNU Affero General Public License v3.0 (AGPL-3.0)](./LICENSE) 开源协议。  
 
 您可以自由地使用、复制、修改、合并、发布和分发本软件及其副本，但必须遵守以下条款：
 
