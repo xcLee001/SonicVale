@@ -41,6 +41,7 @@ cd SonicVale
 
 安装依赖和启动服务
 ```bash
+cd SonicVale
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
