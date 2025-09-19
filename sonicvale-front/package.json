@@ -36,7 +36,8 @@
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "license": "resource/license.txt"
     },
     "electronDownload": {
       "mirror": "https://npmmirror.com/mirrors/electron/"
