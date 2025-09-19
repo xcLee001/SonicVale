@@ -146,8 +146,16 @@ class ChapterService:
     # 然后进行划分
 
     # 然后循环解析，并保存
+    def fill_prompt(self,template: str, characters: list[str], emotions: list[str], strengths: list[str],
+                    novel_content: str) -> str:
+        result = template
+        result = result.replace("{possible_characters}", ", ".join(characters))
+        result = result.replace("{possible_emotions}", ", ".join(emotions))
+        result = result.replace("{possible_strengths}", ", ".join(strengths))
+        result = result.replace("{novel_content}", novel_content)
+        return result
 
-    def para_content(self, chapter_id: int,content: str = None,role_names: List[str] = None,emotion_names: List[str] = None,strength_names: List[str] = None):
+    def para_content(self, prompt:str,chapter_id: int,content: str = None,role_names: List[str] = None,emotion_names: List[str] = None,strength_names: List[str] = None):
         db = SessionLocal()
         try :
     #         获取content
@@ -158,7 +166,8 @@ class ChapterService:
     #         roles = role_repository.get_all(chapter.project_id)
     #         role_names = [role.name for role in roles]
     #         组装prompt
-            prompt = get_context2lines_prompt(role_names, content,emotion_names,strength_names)
+    #         prompt = get_context2lines_prompt(role_names, content,emotion_names,strength_names)
+            prompt = self.fill_prompt(prompt, role_names, emotion_names, strength_names, content)
 
         #   获取llm_provider
 

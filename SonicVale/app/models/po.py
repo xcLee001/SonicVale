@@ -17,6 +17,7 @@ class ProjectPO(Base):
     llm_provider_id = Column(Integer, nullable=True)  # LLM提供商
     llm_model = Column(String(255), nullable=True)  # 指定模型
     tts_provider_id = Column(Integer, nullable=True)  # TTS提供商
+    prompt_id = Column(Integer, nullable=True) # 关联的prompt
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -181,6 +182,17 @@ class TTSProviderPO(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc),
                         nullable=False)
+
+
+class PromptPO(Base):
+    __tablename__ = "prompts"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    task = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    content = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc),nullable=False)
 
 
 # -------------------------

@@ -174,6 +174,8 @@
                             <el-table :data="displayedLines" border stripe highlight-current-row class="lines-table"
                                 :header-cell-style="tableHeaderStyle">
 
+                                <el-table-column prop="line_order" label="序" width="60" align="center"
+                                    header-align="center" show-overflow-tooltip />
 
 
                                 <el-table-column prop="role_id" label="角色" width="150">
@@ -386,12 +388,18 @@
                                             </el-tag>
                                             <el-tag v-else type="info">未绑定音色</el-tag>
 
-                                            <el-button circle plain :disabled="!roleVoiceMap[r.id]"
-                                                @click="playVoice(roleVoiceMap[r.id])" title="试听音色">
-                                                <template #icon>
-                                                    <Headset />
-                                                </template>
-                                            </el-button>
+                                            <el-button
+  circle
+  plain
+  :disabled="!roleVoiceMap[r.id]"
+  @click="toggleVoicePlay(roleVoiceMap[r.id])"
+  :title="isPlaying && currentVoiceId === roleVoiceMap[r.id] ? '暂停' : '试听音色'"
+>
+  <el-icon>
+    <Headset />
+  </el-icon>
+</el-button>
+
                                         </div>
 
                                         <!-- 右边：选择音色 -->
@@ -544,6 +552,17 @@
                         <el-option v-for="tts in ttsProviders" :key="tts.id" :label="tts.name" :value="tts.id" />
                     </el-select>
                 </el-form-item>
+                <!-- 提示词模板 -->
+                <el-form-item label="提示词模版">
+                    <el-select v-model="settingsForm.prompt_id" placeholder="请选择提示词" clearable filterable>
+                        <el-option
+                        v-for="p in prompts"
+                        :key="p.id"
+                        :label="p.name"  
+                        :value="p.id"
+                        />
+                    </el-select>
+                    </el-form-item>
             </el-form>
 
             <template #footer>
@@ -579,11 +598,16 @@
                         <div class="voice-desc">{{ v.description || '无描述' }}</div>
                     </div>
                     <div class="voice-actions">
-                        <el-button circle @click.stop="playVoice2(v.id)" title="试听">
-                            <el-icon>
-                                <Headset />
-                            </el-icon>
-                        </el-button>
+                        <el-button
+  circle
+  @click.stop="toggleVoicePlay(v.id)"
+  :title="isPlaying && currentVoiceId === v.id ? '暂停' : '试听'"
+>
+  <el-icon>
+    <Headset />
+  </el-icon>
+</el-button>
+
                         <el-button type="primary" size="small" @click.stop="confirmSelectVoice(v)">
                             选择
                         </el-button>
@@ -619,12 +643,13 @@ import * as lineAPI from '../api/line'
 import * as voiceAPI from '../api/voice'
 import * as providerAPI from '../api/provider'
 import * as enumAPI from '../api/enums' // 例如 emotion/strength API
+import * as promptAPI from '../api/prompt'
 
 
-const emotionLocked = ref(true)
-const strengthLocked = ref(true)
+const emotionLocked = ref(false)
+const strengthLocked = ref(false)
 
-const roleColumnLocked = ref(true)
+const roleColumnLocked = ref(false)
 // //////////////////////////////////websocket
 // ---- WebSocket（局部，纯 JS）+ 任务队列 ----
 import { onUnmounted } from 'vue'
@@ -779,6 +804,7 @@ const settingsForm = ref({
     llm_provider_id: null,
     llm_model: null,
     tts_provider_id: null,
+    prompt_id: null
 })
 const settingsRules = {
     name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
@@ -789,7 +815,7 @@ const settingsRules = {
 const llmProviders = ref([])
 const availableModels = ref([])
 const ttsProviders = ref([])
-
+const prompts = ref([])
 
 // 打开“项目设置”弹窗：预填现有项目数据 + 拉取 Provider
 async function openProjectSettings() {
@@ -805,15 +831,17 @@ async function openProjectSettings() {
         llm_provider_id: project.value?.llmProviderId ?? project.value?.llm_provider_id ?? null,
         llm_model: project.value?.llmModel ?? project.value?.llm_model ?? null,
         tts_provider_id: project.value?.ttsProviderId ?? project.value?.tts_provider_id ?? null,
+        prompt_id: project.value?.promptId ?? project.value?.prompt_id ?? null
     }
     console.log('表格详情', settingsForm.value)
 
     // 并行拉取 Provider
     try {
-        const [llmRes, ttsRes] = await Promise.all([providerAPI.fetchLLMProviders(), providerAPI.fetchTTSProviders()])
+        const [llmRes, ttsRes, promptRes] = await Promise.all([providerAPI.fetchLLMProviders(), providerAPI.fetchTTSProviders(), promptAPI.fetchPromptList()])
         llmProviders.value = llmRes || []
         ttsProviders.value = ttsRes || []
-
+        prompts.value = promptRes || []   // ✅ 保存提示词列表
+        console.log('提示词列表', promptRes)
         // 回填模型列表
         const provider = llmProviders.value.find(p => p.id === settingsForm.value.llm_provider_id)
         console.log('模型列表', provider)
@@ -829,6 +857,7 @@ async function openProjectSettings() {
         llmProviders.value = []
         ttsProviders.value = []
         availableModels.value = []
+        prompts.value = []
     }
 }
 
@@ -849,6 +878,7 @@ async function saveProjectSettings() {
             llm_provider_id: settingsForm.value.llm_provider_id,
             llm_model: settingsForm.value.llm_model,
             tts_provider_id: settingsForm.value.tts_provider_id,
+            prompt_id: settingsForm.value.prompt_id
         }
         console.log('保存项目设置结果', projectId)
 
@@ -1216,6 +1246,45 @@ function generateAll() {
 
 // 播放
 const audioPlayer = new Audio()
+
+const isPlaying = ref(false)
+const currentVoiceId = ref(null)
+
+function toggleVoicePlay(voiceId) {
+  if (!voiceId) return
+  const voice = voicesOptions.value.find(v => v.id === voiceId)
+  if (!voice?.reference_path) return ElMessage.warning('该音色未设置参考音频')
+
+  const src = native?.pathToFileUrl ? native.pathToFileUrl(voice.reference_path) : voice.reference_path
+
+  if (currentVoiceId.value === voiceId) {
+    // 切换暂停/继续
+    if (isPlaying.value) {
+      audioPlayer.pause()
+    } else {
+      audioPlayer.play().catch(() => ElMessage.error('无法播放音频'))
+    }
+    return
+  }
+
+  // 播放新的音色
+  audioPlayer.pause()
+  audioPlayer.src = src
+  audioPlayer.currentTime = 0
+  currentVoiceId.value = voiceId
+  audioPlayer.play().catch(() => ElMessage.error('无法播放音频'))
+}
+
+// 状态监听
+audioPlayer.addEventListener('play', () => { isPlaying.value = true })
+audioPlayer.addEventListener('pause', () => { isPlaying.value = false })
+audioPlayer.addEventListener('ended', () => {
+  isPlaying.value = false
+  currentVoiceId.value = null
+})
+
+
+
 function playLine(row) {
     if (!row.audio_path) return
     try {
@@ -1478,7 +1547,7 @@ async function updateLineRole(row) {
 }
 
 
-const textLocked = ref(true)
+const textLocked = ref(false) // 防止多次触发
 
 async function updateLineText(row) {
     if (!row?.id) return
@@ -1688,8 +1757,20 @@ async function markAllAsCompleted() {
         const ord = Number.isInteger(line.line_order) ? line.line_order : null
         if (ord == null) { skip2++; continue }
 
-        const newName = `index${ord}.wav`
+        // 取台词前10字作为文件名一部分
+        // 取台词前10字
+        const text = (line.text_content || '').trim().slice(0, 10)
+
+        // 去掉空格和中英文标点
+        const cleanText = text.replace(/[\s\p{P}]/gu, '')
+
+        // 再过滤掉文件名非法字符（Windows 不能包含 \/:*?"<>|）
+        const safeText = cleanText.replace(/[\\/:*?"<>|]/g, '')
+
+        const newName = `${ord}_${safeText}.wav`
+        // const newName = `index${ord}.wav`
         const currentName = /[^/\\]+$/.exec(line.audio_path)?.[0]
+        console.log('currentName=', currentName)
         if (currentName === newName) { skip2++; continue }
 
         const newPath = replaceFilename(line.audio_path, newName)
@@ -1792,6 +1873,7 @@ function playVoice(voiceId) {
 
 // 音频处理
 import WaveCellPro from '../components/WaveCellPro.vue'
+import { fa } from 'element-plus/es/locales.mjs'
 // 行音频版本号：lineId -> number
 const audioVer = ref(new Map())
 

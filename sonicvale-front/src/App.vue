@@ -1,11 +1,7 @@
 <template>
   <el-container class="layout-root">
     <!-- 侧边栏 -->
-    <el-aside
-      class="layout-sider"
-      :class="{ 'is-collapsed': collapsed }"
-      :width="collapsed ? '64px' : '220px'"
-    >
+    <el-aside class="layout-sider" :class="{ 'is-collapsed': collapsed }" :width="collapsed ? '64px' : '220px'">
       <!-- Logo -->
       <div class="logo">
         <span class="logo-emoji">🎙️</span>
@@ -15,24 +11,28 @@
       </div>
 
       <!-- 菜单 -->
-      <el-menu
-        :default-active="activeMenu"
-        background-color="#1f2d3d"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
-        router
-        class="sider-menu"
-        :collapse="collapsed"
-        collapse-transition
-      >
+      <el-menu :default-active="activeMenu" background-color="#1f2d3d" text-color="#bfcbd9" active-text-color="#409EFF"
+        router class="sider-menu" :collapse="collapsed" collapse-transition>
         <el-menu-item index="/projects">
-          <el-icon><Folder /></el-icon><span>内容管理</span>
+          <el-icon>
+            <Folder />
+          </el-icon><span>内容管理</span>
         </el-menu-item>
         <el-menu-item index="/voices">
-          <el-icon><Microphone /></el-icon><span>音色管理</span>
+          <el-icon>
+            <Microphone />
+          </el-icon><span>音色管理</span>
         </el-menu-item>
         <el-menu-item index="/config">
-          <el-icon><Setting /></el-icon><span>配置中心</span>
+          <el-icon>
+            <Setting />
+          </el-icon><span>配置中心</span>
+        </el-menu-item>
+        <!-- 提示 -->
+        <el-menu-item index="/prompts">
+          <el-icon>
+            <Document />
+          </el-icon><span>提示词管理</span>
         </el-menu-item>
       </el-menu>
 
@@ -40,8 +40,12 @@
       <div class="sider-footer">
         <el-tooltip :content="collapsed ? '展开菜单' : '收起菜单'" placement="right">
           <el-button class="collapse-btn" circle @click="toggleCollapse">
-            <el-icon v-if="collapsed"><Expand /></el-icon>
-            <el-icon v-else><Fold /></el-icon>
+            <el-icon v-if="collapsed">
+              <Expand />
+            </el-icon>
+            <el-icon v-else>
+              <Fold />
+            </el-icon>
           </el-button>
         </el-tooltip>
 
@@ -63,7 +67,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Folder, Setting, Microphone, Fold, Expand } from '@element-plus/icons-vue'
+import { Folder, Setting, Microphone, Fold, Expand,Document  } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeMenu = ref(route.path)
@@ -75,27 +79,51 @@ const toggleCollapse = () => { collapsed.value = !collapsed.value }
 
 <style>
 /* —— 基础布局 —— */
-html, body, #app { height: 100%; margin: 0; overflow: hidden; }
-.layout-root { height: 100vh; }
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.layout-root {
+  height: 100vh;
+}
 
 .layout-sider {
-  background:#1f2d3d; color:#fff;
-  display:flex; flex-direction:column;
+  background: #1f2d3d;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
   transition: width .2s ease;
-  border-right: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* 顶部 Logo */
 .logo {
-  display:flex; align-items:center; gap: 8px;
-  height:60px; padding: 0 12px;
-  background:#15202b;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 60px;
+  padding: 0 12px;
+  background: #15202b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
-.logo-emoji { font-size: 18px; line-height: 1; }
-.logo-text  { font-size:16px; font-weight:600; white-space:nowrap; overflow:hidden; }
+
+.logo-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+}
 
 /* 菜单区域：只纵向滚动，禁止横向滚动（修复折叠态横向滚动条） */
 .sider-menu {
@@ -108,28 +136,49 @@ html, body, #app { height: 100%; margin: 0; overflow: hidden; }
 /* 底部控制区 */
 .sider-footer {
   flex: 0 0 56px;
-  display:flex; align-items:center; justify-content:flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   gap: 10px;
   padding: 10px 8px 12px 8px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
-.is-collapsed .sider-footer { justify-content: center; }
+
+.is-collapsed .sider-footer {
+  justify-content: center;
+}
 
 /* 折叠按钮 */
 .collapse-btn {
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
   border: none;
-  width: 36px; height: 36px;
+  width: 36px;
+  height: 36px;
   backdrop-filter: blur(2px);
 }
-.collapse-btn:hover { background: rgba(255,255,255,0.12); }
-.collapse-label { font-size: 12px; color: #bfcbd9; }
+
+.collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.collapse-label {
+  font-size: 12px;
+  color: #bfcbd9;
+}
 
 /* 右侧容器 */
-.layout-content { display:flex; flex-direction:column; min-height: 0; }
+.layout-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .layout-main {
-  background:#f5f7fa; padding:24px;
-  flex: 1 1 auto; min-height: 0; overflow: auto;
+  background: #f5f7fa;
+  padding: 24px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 /* —— 菜单样式（展开态） —— */
@@ -137,23 +186,47 @@ html, body, #app { height: 100%; margin: 0; overflow: hidden; }
   border-radius: 8px;
   margin: 4px 12px;
 }
-.el-menu-item:hover { background-color: #304156 !important; }
-.el-menu-item.is-active { background-color: #409EFF !important; color: #fff !important; }
+
+.el-menu-item:hover {
+  background-color: #304156 !important;
+}
+
+.el-menu-item.is-active {
+  background-color: #409EFF !important;
+  color: #fff !important;
+}
 
 /* —— 折叠态定制（关键修复） —— */
 .el-menu--collapse .el-menu-item {
-  margin: 6px;           /* 避免原 12px 横向外边距导致 64px 溢出 */
+  margin: 6px;
+  /* 避免原 12px 横向外边距导致 64px 溢出 */
   padding: 0;
   width: auto;
   box-sizing: border-box;
   justify-content: center;
 }
-.el-menu--collapse .el-menu-item .el-icon { margin-right: 0; }
-.el-menu--collapse .el-menu-item.is-active { border-radius: 10px; }
+
+.el-menu--collapse .el-menu-item .el-icon {
+  margin-right: 0;
+}
+
+.el-menu--collapse .el-menu-item.is-active {
+  border-radius: 10px;
+}
+
 /* 如果后续加子菜单，折叠时隐藏箭头避免溢出 */
-.el-menu--collapse .el-sub-menu__icon-arrow { display: none; }
+.el-menu--collapse .el-sub-menu__icon-arrow {
+  display: none;
+}
 
 /* 过渡动画 */
-.fade-enter-active, .fade-leave-active { transition: opacity .15s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity .15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>

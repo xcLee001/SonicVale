@@ -12,11 +12,11 @@
         </div>
 
         <!-- 项目卡片网格 -->
-        <el-row :gutter="20">
+        <el-row :gutter="40">
             <el-col v-for="item in projects" :key="item.id" :xs="24" :sm="12" :md="8" :lg="6" :xl="6"
                 style="margin-bottom:20px;">
                 <el-card shadow="hover" class="project-card">
-                    <!-- 删除按钮 -->
+                    <!-- 删除按钮（悬浮右上角） -->
                     <div class="delete-btn">
                         <el-popconfirm title="确认删除这个项目吗？" confirm-button-text="删除" cancel-button-text="取消"
                             @confirm="handleDelete(item.id)">
@@ -31,32 +31,50 @@
                     </div>
 
                     <!-- 项目信息 -->
-                    <!-- 项目信息 -->
-                    <div style="padding:14px;">
+                    <div class="project-card-body">
                         <h3 class="project-title">{{ item.name }}</h3>
-                        <p class="project-desc">{{ item.description }}</p>
-                        <p class="project-meta">创建日期：{{ item.createdAt }}</p>
-                        <p class="project-meta">更新日期：{{ item.updatedAt }}</p>
+                        <p class="project-desc">{{ item.description || '暂无描述' }}</p>
 
-                        <p v-if="item.llmProviderId" class="project-meta">
-                            LLM 提供商：{{ getLLMProviderName(item.llmProviderId) }}
-                        </p>
-                        <p v-if="item.llmModel" class="project-meta">
-                            LLM 模型：{{ item.llmModel }}
-                        </p>
-                        <p v-if="item.ttsProviderId" class="project-meta">
-                            TTS 引擎：{{ getTTSProviderName(item.ttsProviderId) }}
-                        </p>
+                        <div class="project-meta-list">
+                            <p v-if="item.llmProviderId" class="project-meta">
+                                <el-icon>
+                                    <Cpu />
+                                </el-icon> LLM 提供商：{{ getLLMProviderName(item.llmProviderId) }}
+                            </p>
+                            <p v-if="item.llmModel" class="project-meta">
+                                <el-icon>
+                                    <Cpu />
+                                </el-icon> LLM 模型：{{ item.llmModel }}
+                            </p>
+                            <p v-if="item.ttsProviderId" class="project-meta">
+                                <el-icon>
+                                    <Mic />
+                                </el-icon> TTS 引擎：{{ getTTSProviderName(item.ttsProviderId) }}
+                            </p>
+                            <p v-if="item.promptId" class="project-meta">
+                                <el-icon>
+                                    <Document />
+                                </el-icon> 提示词：{{ getPromptName(item.promptId) }}
+                            </p>
+                            <!-- 更新时间 -->
+                            <p class="project-meta">
+                                <el-icon >
+                                    <Clock />
+                                </el-icon> 创建时间：{{ new Date(item.createdAt).toLocaleString() }}
+                            </p>
 
-                        <div style="text-align:right; margin-top:12px;">
-                            <el-button size="small" type="primary" @click="$router.push(`/projects/${item.id}/dubbing`)">继续配音</el-button>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="project-actions">
+                            <el-button size="small" type="primary" round
+                                @click="$router.push(`/projects/${item.id}/dubbing`)">
+                                🎙 继续配音
+                            </el-button>
                         </div>
                     </div>
-
-
-
-
                 </el-card>
+
             </el-col>
         </el-row>
 
@@ -94,6 +112,13 @@
                         <el-option v-for="tts in ttsProviders" :key="tts.id" :label="tts.name" :value="tts.id" />
                     </el-select>
                 </el-form-item>
+                <!-- 提示词模板 -->
+                <el-form-item label="提示词模板" prop="prompt_id">
+                    <el-select v-model="form.prompt_id" placeholder="请选择提示词模板" clearable style="width: 100%;">
+                        <el-option v-for="p in prompts" :key="p.id" :label="p.name" :value="p.id" />
+                    </el-select>
+                </el-form-item>
+
             </el-form>
 
             <template #footer>
@@ -107,9 +132,12 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+// import { Plus, Delete } from '@element-plus/icons-vue'
 import { fetchProjects, createProject, deleteProject } from '../api/project'
 import { fetchLLMProviders, fetchTTSProviders } from '../api/provider'
+import { fetchPromptList } from '../api/prompt'
+import { Plus, Delete, Cpu, Mic, Document, Clock } from "@element-plus/icons-vue"
+const prompts = ref([])
 
 const projects = ref([])
 const dialogVisible = ref(false)
@@ -120,13 +148,15 @@ const form = ref({
     description: '',
     llm_provider_id: null,
     llm_model: null,
-    tts_provider_id: null
+    tts_provider_id: null,
+    prompt_id: null
 })
 
 // 校验规则
 const rules = {
     name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
-    description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }]
+    description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }],
+    prompt_id: [{ required: true, message: '请选择提示词模版', trigger: 'change' }]
 }
 
 const formRef = ref(null)
@@ -141,18 +171,23 @@ onMounted(async () => {
     projects.value = await fetchProjects()
     llmProviders.value = await fetchLLMProviders()
     ttsProviders.value = await fetchTTSProviders()
+    prompts.value = await fetchPromptList()   // ✅ 加载提示词
 })
 
 
 /** ===================== 名称映射工具 ===================== */
 const getLLMProviderName = (id) => {
-  const p = llmProviders.value.find(x => x.id === id)
-  return p ? p.name : id
+    const p = llmProviders.value.find(x => x.id === id)
+    return p ? p.name : id
 }
 const getTTSProviderName = (id) => {
-  const p = ttsProviders.value.find(x => x.id === id)
-  console.log("getTTSProviderName", id, p)
-  return p ? p.name : id
+    const p = ttsProviders.value.find(x => x.id === id)
+    console.log("getTTSProviderName", id, p)
+    return p ? p.name : id
+}
+const getPromptName = (id) => {
+    const p = prompts.value.find(x => x.id === id)
+    return p ? p.name : id
 }
 
 // 监听 LLM provider 切换，更新模型列表
@@ -170,6 +205,7 @@ const handleDelete = async (id) => {
     try {
         await deleteProject(id)
         projects.value = projects.value.filter(p => p.id !== id)
+
         ElMessage.success('删除成功')
     } catch (e) {
         ElMessage.error('删除失败')
@@ -185,7 +221,7 @@ const handleSubmit = () => {
                 ElMessage.success('项目创建成功')
                 dialogVisible.value = false
                 // 重置表单
-                Object.assign(form.value, { name: '', description: '', llm_provider_id: null, llm_model: null, tts_provider_id: null })
+                Object.assign(form.value, { name: '', description: '', llm_provider_id: null, llm_model: null, tts_provider_id: null, prompt_id: null })
                 projects.value = await fetchProjects()
             } catch (e) {
                 ElMessage.error('创建失败')
@@ -205,31 +241,63 @@ const handleSubmit = () => {
 
 .project-card {
     border-radius: 12px;
-    overflow: hidden;
     position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
 }
 
+.project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+/* 删除按钮悬浮 */
 .delete-btn {
     position: absolute;
     top: 10px;
     right: 10px;
+    z-index: 1;
+}
+
+.project-card-body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
 .project-title {
-    margin-bottom: 6px;
-    font-size: 16px;
-    font-weight: bold;
+    font-size: 18px;
+    font-weight: 600;
+    color: #303133;
+    margin: 0 0 6px 0;
 }
 
 .project-desc {
-    font-size: 13px;
-    color: #999;
-    margin: 0 0 8px;
+    font-size: 14px;
+    color: #606266;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    min-height: 36px;
+}
+
+.project-meta-list {
+    flex: 1;
+    margin-top: 8px;
 }
 
 .project-meta {
-    font-size: 14px;
-    color: #666;
-    margin: 0 0 4px;
+    font-size: 13px;
+    color: #909399;
+    margin: 2px 0;
+    display: flex;
+    overflow: hidden;
+    align-items: center;
+    gap: 4px;
+}
+
+.project-actions {
+    text-align: right;
+    margin-top: 14px;
 }
 </style>

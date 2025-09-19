@@ -18,8 +18,8 @@ from app.models.po import *
 from app.repositories.llm_provider_repository import LLMProviderRepository
 from app.repositories.tts_provider_repository import TTSProviderRepository
 from app.routers import project_router, chapter_router, role_router, voice_router, llm_provider_router, \
-    tts_provider_router, line_router, emotion_router, strength_router, multi_emotion_voice_router
-from app.routers.chapter_router import get_strength_service
+    tts_provider_router, line_router, emotion_router, strength_router, multi_emotion_voice_router, prompt_router
+from app.routers.chapter_router import get_strength_service, get_prompt_service
 from app.routers.emotion_router import get_emotion_service
 from app.services.llm_provider_service import LLMProviderService
 
@@ -66,6 +66,17 @@ app.add_middleware(
 WORKERS = 1
 QUEUE_CAPACITY = 200
 
+from sqlalchemy import text
+
+def add_prompt_id_column():
+    with engine.connect() as conn:
+        # 检查 project 表是否已有 prompt_id
+        result = conn.execute(text("PRAGMA table_info(projects)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "prompt_id" not in columns:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN prompt_id INTEGER"))
+            conn.commit()
+
 
 def get_tts_service(db: Session = Depends(get_db)) -> TTSProviderService:
     return TTSProviderService(TTSProviderRepository(db))
@@ -77,6 +88,10 @@ async def startup_event():
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         logging.exception("❌ 数据库建表失败: %s", e)
+
+    # 更改数据库表字段
+    add_prompt_id_column()
+
 
     # 2) 初始化共享运行时
     try:
@@ -122,6 +137,16 @@ async def startup_event():
         except Exception as e:
             logging.warning("⚠️ 强度初始化失败: %s", e)
 
+    #     创建默认提示词
+        try:
+            prompt_service = get_prompt_service(db)
+            if not prompt_service.get_all_prompts():
+                print("创建默认提示词")
+                prompt_service.create_default_prompt()
+        except Exception as e:
+            logging.warning("⚠️ 默认提示词创建失败: %s", e)
+
+
     except Exception as e:
         logging.exception("❌ 默认数据初始化异常: %s", e)
     finally:
@@ -148,6 +173,7 @@ app.include_router(line_router.router)
 app.include_router(emotion_router.router)
 app.include_router(strength_router.router)
 app.include_router(multi_emotion_voice_router.router)
+app.include_router(prompt_router.router)
 # =========================
 # 健康检查接口
 # =========================

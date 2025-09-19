@@ -5,6 +5,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
+from rich.emoji import NoEmoji
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Form
 from starlette.responses import StreamingResponse
@@ -21,6 +22,7 @@ from app.repositories.line_repository import LineRepository
 from app.repositories.llm_provider_repository import LLMProviderRepository
 from app.repositories.multi_emotion_voice_repository import MultiEmotionVoiceRepository
 from app.repositories.project_repository import ProjectRepository
+from app.repositories.prompt_repository import PromptRepository
 from app.repositories.role_repository import RoleRepository
 from app.repositories.strength_repository import StrengthRepository
 from app.repositories.tts_provider_repository import TTSProviderRepository
@@ -31,6 +33,7 @@ from app.services.emotion_service import EmotionService
 from app.services.line_service import LineService
 from app.services.multi_emotion_voice_service import MultiEmotionVoiceService
 from app.services.project_service import ProjectService
+from app.services.prompt_service import PromptService
 from app.services.role_service import RoleService
 from app.services.strength_service import StrengthService
 from app.services.voice_service import VoiceService
@@ -74,6 +77,10 @@ def get_strength_service(db: Session = Depends(get_db)) -> StrengthService:
 def get_multi_emotion_voice_service(db: Session = Depends(get_db)) -> MultiEmotionVoiceService:
     repository = MultiEmotionVoiceRepository(db)
     return MultiEmotionVoiceService(repository)
+
+def get_prompt_service(db: Session = Depends(get_db)) -> PromptService:
+    repository = PromptRepository(db)
+    return PromptService(repository)
 
 @router.post("", response_model=Res[ChapterResponseDTO],
              summary="创建章节",
@@ -157,7 +164,9 @@ async def delete_chapter(chapter_id: int, chapter_service: ChapterService = Depe
 async def get_lines(project_id:int,chapter_id: int, chapter_service: ChapterService = Depends(get_chapter_service),line_service: LineService = Depends(get_line_service),
                     role_service: RoleService = Depends(get_role_service),
                     emotion_service: EmotionService = Depends(get_emotion_service),
-                    strength_service: StrengthService = Depends(get_strength_service),):
+                    strength_service: StrengthService = Depends(get_strength_service),
+                    prompt_service: PromptService = Depends(get_prompt_service),
+                    project_service: ProjectService = Depends(get_project_service)):
     contents = chapter_service.split_text(chapter_id,800)
 
     all_line_data = []
@@ -174,6 +183,12 @@ async def get_lines(project_id:int,chapter_id: int, chapter_service: ChapterServ
 
     emotions_dict = {emotion.name: emotion.id for emotion in emotions}
     strengths_dict = {strength.name: strength.id for strength in strengths}
+    # 提示词
+    project = project_service.get_project(project_id)
+    prompt = prompt_service.get_prompt(project.prompt_id)
+    # 提示词验证
+    if prompt is None:
+        return Res(data=None, code=500, message="提示词不存在")
     for idx, content in enumerate(contents):
         print(f"解析第 {idx + 1}/{len(contents)} 段...")
 
@@ -181,7 +196,7 @@ async def get_lines(project_id:int,chapter_id: int, chapter_service: ChapterServ
             # roles转化成list
             roles_list = list(roles)
             print(roles_list)
-            lines_data = chapter_service.para_content(chapter_id, content,roles_list,emotion_names,strength_names)
+            lines_data = chapter_service.para_content(prompt.content,chapter_id, content,roles_list,emotion_names,strength_names)
             #提取lines_data中所有的角色，然后加入roles中
             for line_data in lines_data:
                 roles.add(line_data.role_name)

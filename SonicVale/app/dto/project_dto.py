@@ -10,6 +10,7 @@ class ProjectCreateDTO(BaseModel):
     llm_provider_id: Optional[int] = None
     llm_model: Optional[str] = None
     tts_provider_id: Optional[int] = None
+    prompt_id: Optional[int] = None
 
 class ProjectResponseDTO(BaseModel):
     id: int
@@ -18,5 +19,6 @@ class ProjectResponseDTO(BaseModel):
     llm_provider_id: Optional[int] = None
     llm_model: Optional[str] = None
     tts_provider_id: Optional[int] = None
+    prompt_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime

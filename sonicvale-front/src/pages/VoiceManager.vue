@@ -29,19 +29,21 @@
         </template>
       </el-table-column>
 
-
       <el-table-column label="播放" width="160" align="center">
         <template #default="{ row }">
-          <!-- 单一音色：直接播放参考音频 -->
-
-            <el-button size="small" :type="row.reference_path ? 'primary' : 'default'" :plain="!row.reference_path"
-              :disabled="!row.reference_path" @click="handlePlayPath(row.reference_path)">
-              <el-icon style="margin-right:4px;">
-                <Headset />
-              </el-icon>播放
-            </el-button>
-
-          
+          <!-- 统一使用 togglePlay，按钮文案根据状态切换 -->
+          <el-button
+            size="small"
+            :type="row.reference_path ? 'primary' : 'default'"
+            :plain="!row.reference_path"
+            :disabled="!row.reference_path"
+            @click="togglePlay(row.reference_path)"
+          >
+            <el-icon style="margin-right:4px;">
+              <Headset />
+            </el-icon>
+            {{ isPlaying && currentPath === row.reference_path ? '暂停' : '播放' }}
+          </el-button>
         </template>
       </el-table-column>
 
@@ -109,7 +111,9 @@
             <div class="preview" v-if="form.reference_path">
               <el-alert title="已选择本地音频文件" type="success" :closable="false" show-icon class="mb8" />
               <div class="path-text">{{ form.reference_path }}</div>
-              <el-button type="primary" size="small" @click="handlePlayPath(form.reference_path)">预览播放</el-button>
+              <el-button type="primary" size="small" @click="togglePlay(form.reference_path)">
+                {{ isPlaying && currentPath === form.reference_path ? '暂停' : '播放' }}
+              </el-button>
             </div>
           </el-form-item>
         </template>
@@ -146,8 +150,15 @@
                       <el-button @click="pickLocalAudioForVariant($index)">选择</el-button>
                       <el-button v-if="row.reference_path" type="danger" link
                         @click="row.reference_path = ''">清除</el-button>
-                      <el-button v-if="row.reference_path" size="small" type="primary" plain
-                        @click="handlePlayPath(row.reference_path)">播放</el-button>
+                      <el-button
+                        v-if="row.reference_path"
+                        size="small"
+                        type="primary"
+                        plain
+                        @click="togglePlay(row.reference_path)"
+                      >
+                        {{ isPlaying && currentPath === row.reference_path ? '暂停' : '播放' }}
+                      </el-button>
                     </div>
                     <div v-if="row.reference_path" class="path-text">{{ row.reference_path }}</div>
                   </template>
@@ -182,7 +193,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage,ElMessageBox } from 'element-plus'
 import { Headset } from '@element-plus/icons-vue'
 import { createVoice, fetchVoicesByTTS, updateVoice, deleteVoice } from '../api/voice'
@@ -192,7 +203,6 @@ import { fetchAllEmotions, fetchAllStrengths } from '../api/enums'
 import { fetchMultiEmotionVoicesByVoiceId, createMultiEmotionVoice, deleteMultiEmotionVoice,updateMultiEmotionVoice } from '../api/multiEmotionVoice'
 import { de } from 'element-plus/es/locales.mjs'
 
-
 // @ts-ignore - 由 preload 暴露
 const native = window.native
 
@@ -200,10 +210,49 @@ const ttsProviders = ref([])
 const selectedTTS = ref(null)
 const voices = ref([])
 
-// 单一音频播放器
+// ====== 统一音频播放控制（优雅版）======
 const audioPlayer = new Audio()
+const isPlaying = ref(false)
+const currentPath = ref(null)
 
+function togglePlay(absPath) {
+  if (!absPath) return
+  const url = toFileUrl(absPath)
+  if (!url) {
+    ElMessage.error('无法播放该音频文件')
+    return
+  }
+
+  // 同一文件：切换暂停/继续
+  if (currentPath.value === absPath) {
+    if (isPlaying.value) {
+      audioPlayer.pause()
+    } else {
+      audioPlayer.play().catch(() => ElMessage.error('无法播放该音频文件'))
+    }
+    return
+  }
+
+  // 切到新文件：从头播放
+  audioPlayer.pause()
+  audioPlayer.src = url
+  audioPlayer.currentTime = 0
+  currentPath.value = absPath
+  audioPlayer.play().catch(() => ElMessage.error('无法播放该音频文件'))
+}
+
+// 同步播放状态到 UI
+audioPlayer.addEventListener('play', () => { isPlaying.value = true })
+audioPlayer.addEventListener('pause', () => { isPlaying.value = false })
+audioPlayer.addEventListener('ended', () => {
+  isPlaying.value = false
+  currentPath.value = null
+})
+// 关闭弹窗时自动暂停
 const dialogVisible = ref(false)
+watch(dialogVisible, v => { if (!v) audioPlayer.pause() })
+// =====================================
+
 const formRef = ref(null)
 const form = ref({
   id: null,
@@ -336,14 +385,11 @@ function addEmotionRow() {
   form.value.emotion_voices.push({ emotion_id: '', strength_id: '', reference_path: '' })
   console.log('addEmotionRow', form.value.emotion_voices)
 }
-// import { ElMessage, ElMessageBox } from 'element-plus'
-// import { deleteMultiEmotionVoice } from '../api/multiEmotionVoice'
 
 async function removeEmotionRow(i) {
   const rows = form.value.emotion_voices || []
   const row = rows[i]
   if (!row) return
-
 
   try {
     await ElMessageBox.confirm(
@@ -356,7 +402,6 @@ async function removeEmotionRow(i) {
     ElMessage.success('删除成功')
 
     // 删完重新拉取，确保与服务端一致
-
     await loadVariantsForVoice(form.value.id)
 
   } catch (err) {
@@ -369,20 +414,6 @@ async function removeEmotionRow(i) {
 
 function toFileUrl(p) {
   try { return native.pathToFileUrl(p) } catch { return '' }
-}
-
-function handlePlayPath(absPath) {
-  if (!absPath) return
-  try {
-    const url = toFileUrl(absPath)
-    if (!url) throw new Error('bad path')
-    audioPlayer.pause()
-    audioPlayer.src = url
-    audioPlayer.currentTime = 0
-    audioPlayer.play().catch(() => ElMessage.error('无法播放该音频文件'))
-  } catch {
-    ElMessage.error('无法播放该音频文件')
-  }
 }
 
 function checkMultiEmotionValid() {
@@ -445,9 +476,7 @@ function submitForm() {
       if (form.value.id) {
         voice_id  = form.value.id
         await updateVoice(form.value.id, payload)
-        // 还要看看多情绪音色的变更
         ElMessage.success('修改成功')
-        // 对于每一个emotion_voices，若有id则更新，无id则创建
       } else {
         const res = await createVoice(payload)
         voice_id = res.data.id
@@ -466,7 +495,6 @@ function submitForm() {
           }
         }
       }
-
 
       dialogVisible.value = false
       await loadVoices()
@@ -499,8 +527,6 @@ function displayStrength(val) {
 onMounted(async () => {
   await Promise.all([loadTTS(), loadEnums()])
 })
-
-
 
 async function importMultiEmotionVoiceFromFolder() {
   const fileList = await native?.selectVoiceFolder?.()
@@ -563,9 +589,6 @@ async function importMultiEmotionVoiceFromFolder() {
   ElMessage.success(`成功导入 ${created} 条情绪音色`)
   await loadVoices()
 }
-
-
-
 </script>
 
 <style scoped>

@@ -4,10 +4,10 @@ from pydantic import BaseModel
 from typing import Optional
 
 class LineInitDTO(BaseModel):
-    role_name: str
+    role_name: Optional[str] = None
     text_content: str
-    emotion_name: str
-    strength_name: str
+    emotion_name: Optional[str] = None
+    strength_name: Optional[str] = None
 
 
 class LineOrderDTO(BaseModel):

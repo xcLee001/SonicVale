@@ -26,6 +26,9 @@ const routes = [
     name: 'ProjectDubbingDetail', 
     component:  () => import('../pages/ProjectDubbingDetail.vue')
   },
+  { path: '/prompts',
+    name: 'PromptManager', 
+    component:() => import('../pages/PromptManager.vue') },    // 新增路由
 ]
 
 const router = createRouter({

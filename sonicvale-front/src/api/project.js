@@ -6,16 +6,22 @@ import dayjs from 'dayjs'
 export function fetchProjects() {
   return request.get('/projects').then(res => {
     if (res.code === 200) {
-      return res.data.map(p => ({
+      const projects = res.data.map(p => ({
         id: p.id,
         name: p.name,
         description: p.description,
-        createdAt: dayjs(p.created_at).format('YYYY-MM-DD'),
-        updatedAt: dayjs(p.updated_at).format('YYYY-MM-DD'),
+        createdAt: dayjs(p.created_at).format('YYYY-MM-DD HH:mm:ss'),
+        updatedAt: dayjs(p.updated_at).format('YYYY-MM-DD HH:mm:ss'),
+        createdAtRaw: p.created_at,  // 原始时间戳（排序用）
+        updatedAtRaw: p.updated_at,  // 原始时间戳（排序用）
         llmModel: p.llm_model,
         ttsProviderId: p.tts_provider_id,
-        llmProviderId: p.llm_provider_id
+        llmProviderId: p.llm_provider_id,
+        promptId: p.prompt_id,
       }))
+
+      // 🔥 按更新时间排序（最新在前）
+      return projects.sort((a, b) => new Date(b.updatedAtRaw) - new Date(a.updatedAtRaw))
     }
     return []
   })

@@ -405,6 +405,7 @@ class LineService:
     def export_audio(self, chapter_id):
         # 拿到所有的台词
         lines = self.repository.get_all(chapter_id)
+
         paths = [line.audio_path for line in lines]
         if len(paths) > 0:
             # 把paths[0]的path去掉后面的文件名，得到文件夹路径
@@ -417,9 +418,35 @@ class LineService:
             # 生成字幕
             output_subtitle_path = os.path.join(output_dir_path, "result.srt")
             subtitle_engine.generate_subtitle(output_path,output_subtitle_path)
+
+            # 生成所有的单条字幕
+            subtitle_dir_path = os.path.join(os.path.dirname(paths[0]), "subtitles")
+            # 先清空这个文件夹
+            shutil.rmtree(subtitle_dir_path, ignore_errors=True)
+            os.makedirs(subtitle_dir_path, exist_ok=True)
+            for line in lines:
+                path = line.audio_path
+                base_name = os.path.splitext(os.path.basename(path))[0]
+                subtitle_path = os.path.join(subtitle_dir_path, base_name + ".srt")
+                subtitle_engine.generate_subtitle(path,subtitle_path)
+                #     将subtitle_path写进line.subtitle_path
+                self.repository.update(line.id,{"subtitle_path":subtitle_path})
+
+
             return True
         else:
             return False
+
+    def generate_subtitle(self, line_id, dto):
+        # 获取台词
+        line = self.get_line(line_id)
+        if line:
+            # 将音频文件路径的后缀改为.srt
+            dto.subtitle_path = os.path.splitext(dto.subtitle_path)[0] + ".srt"
+            subtitle_engine.generate_subtitle(line.audio_path,dto.subtitle_path)
+            return dto.subtitle_path
+        else:
+            return None
 
 #     生成字幕
 #     def generate_subtitle(self, res_path):
