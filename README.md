@@ -134,6 +134,10 @@ TTS 配置界面
 
 - 您必须在分发的软件中包含原始许可声明和版权声明。
 
+- 若您修改并发布本软件，或通过网络提供服务（如 SaaS、Web 应用），您必须同时公开修改后的源代码。
+
+- 您不得附加任何与 AGPL-3.0 条款冲突的限制。
+
 ## ⚠️ 免责声明
 
 本项目仅供学习与研究使用。  
@@ -158,8 +162,3 @@ Users are strictly prohibited from using this project for any unlawful activitie
 The developer shall not be held liable for any consequences arising from the use of this project.  
 All risks and responsibilities lie solely with the user.  
 By using this project, you acknowledge that you have read and agreed to this disclaimer.
-
-
-- 若您修改并发布本软件，或通过网络提供服务（如 SaaS、Web 应用），您必须同时公开修改后的源代码。
-
-- 您不得附加任何与 AGPL-3.0 条款冲突的限制。
