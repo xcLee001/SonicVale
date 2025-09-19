@@ -134,6 +134,32 @@ TTS 配置界面
 
 - 您必须在分发的软件中包含原始许可声明和版权声明。
 
+## ⚠️ 免责声明
+
+本项目仅供学习与研究使用。  
+用户不得利用本项目从事任何违法违规行为，包括但不限于：  
+- 克隆或模仿未经授权的声音；  
+- 侵犯他人声音权、肖像权、著作权、名誉权；  
+- 其他可能违反法律法规的行为。  
+
+开发者不对用户使用本项目所产生的任何后果负责，所有风险与责任由用户自行承担。  
+使用本项目即表示您已阅读并同意本免责声明。  
+
+---
+
+## ⚠️ Disclaimer
+
+This project is intended for research and educational purposes only.  
+Users are strictly prohibited from using this project for any unlawful activities, including but not limited to:  
+- Cloning or imitating voices without authorization;  
+- Infringing upon the rights of others (voice rights, portrait rights, copyrights, reputation rights, etc.);  
+- Any other activities in violation of applicable laws and regulations.  
+
+The developer shall not be held liable for any consequences arising from the use of this project.  
+All risks and responsibilities lie solely with the user.  
+By using this project, you acknowledge that you have read and agreed to this disclaimer.
+
+
 - 若您修改并发布本软件，或通过网络提供服务（如 SaaS、Web 应用），您必须同时公开修改后的源代码。
 
 - 您不得附加任何与 AGPL-3.0 条款冲突的限制。
