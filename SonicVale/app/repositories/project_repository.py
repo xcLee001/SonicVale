@@ -29,8 +29,7 @@ class ProjectRepository:
         if not project:
             return None
         for key, value in project_data.items():
-            if value is not None:  # 只更新不为空的字段
-                setattr(project, key, value)
+            setattr(project, key, value)
         self.db.commit()
         self.db.refresh(project)
         return project

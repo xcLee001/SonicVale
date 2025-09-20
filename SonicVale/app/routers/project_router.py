@@ -99,7 +99,7 @@ def update_project(project_id: int, dto: ProjectCreateDTO, service: ProjectServi
     if not project:
         return Res(data=None, code=400, message="项目不存在")
 
-    success = service.update_project(project_id,dto.dict(exclude_unset=True))
+    success = service.update_project(project_id,dto.dict())
     if success:
         return Res(data=dto, code=200, message="更新成功")
     else:

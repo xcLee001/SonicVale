@@ -118,14 +118,20 @@ class ChapterService:
     # 先获取章节内容
     def split_text(self, chapter_id: int, max_length: int = 800) -> List[str]:
         """
-        将文本按标点断句，并按最大长度分组，确保每段以句号/问号/感叹号等结束。
+        将文本按标点/换行断句，并按最大长度分组，确保每段以标点结束。
+        支持中英文标点和换行符。
         """
         content = self.get_chapter(chapter_id).text_content
         # 去掉空行
         content = "\n".join([line for line in content.split("\n") if line.strip()])
 
-        # 使用正则分割成句子，保留句号/感叹号/问号
-        sentences = re.findall(r'[^。！？]*[。！？]', content, re.MULTILINE | re.DOTALL)
+        # 如果最后没有句号/问号/感叹号/点号，自动补一个句号
+        if not re.search(r'[。！？.!?]$', content):
+            content += "。"
+
+        # 使用正则分割，支持中英文标点 + 逗号 + 换行
+        # [] 里列出所有可能的结束符号
+        sentences = re.findall(r'[^。！？.!?,，\n]*[。！？.!?,，\n]', content, re.MULTILINE | re.DOTALL)
 
         chunks = []
         buffer = ""
@@ -141,7 +147,7 @@ class ChapterService:
         if buffer:
             chunks.append(buffer.strip())
 
-        return chunks  # ✅ 别忘了这个！
+        return chunks
 
     # 然后进行划分
 

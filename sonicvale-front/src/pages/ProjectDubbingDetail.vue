@@ -543,6 +543,10 @@
                     <el-select v-model="settingsForm.llm_model" placeholder="请选择 LLM 模型" clearable style="width: 100%;">
                         <el-option v-for="model in availableModels" :key="model" :label="model" :value="model" />
                     </el-select>
+                    <!-- 如果为空就提示 -->
+                <div v-if="!settingsForm.llm_model && settingsForm.llm_provider_id" style="color: #f56c6c; font-size: 12px; margin-top: 4px;">
+                    请选择 LLM 模型
+                </div>
                 </el-form-item>
 
                 <!-- TTS 提供商 -->
@@ -808,7 +812,8 @@ const settingsForm = ref({
 })
 const settingsRules = {
     name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
-    description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }]
+    description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }],
+    llm_model: [{ required: true, message: '请选择 LLM 模型', trigger: 'change' }],
 }
 
 // Provider 下拉
@@ -860,6 +865,23 @@ async function openProjectSettings() {
         prompts.value = []
     }
 }
+watch(
+  () => settingsForm.value.llm_provider_id,
+  (newProviderId, oldProviderId) => {
+    // 如果是初始化（oldProviderId === undefined/null），不要清空
+    if (!oldProviderId) {
+      const provider = llmProviders.value.find(p => p.id === newProviderId)
+      availableModels.value = provider ? (provider.model_list ? provider.model_list.split(',') : []) : []
+      return
+    }
+
+    // 只有用户真的切换时才清空
+    settingsForm.value.llm_model = null
+    const provider = llmProviders.value.find(p => p.id === newProviderId)
+    availableModels.value = provider ? (provider.model_list ? provider.model_list.split(',') : []) : []
+  }
+)
+
 
 // 保存=更新项目（直接调用你的 update 接口）
 async function saveProjectSettings() {
@@ -1013,7 +1035,9 @@ function openEditDialog() {
 
 async function submitImport() {
     if (!activeChapterId.value) return
-    const text = importText.value.trim()
+    console.log('导入章节正文')
+    const text = importText.value
+    console.log('导入章节正文', text)
     const exist = chapters.value.find(c => c.id === activeChapterId.value)
     const payload = {
         title: exist?.title || '未命名章节',
@@ -1030,7 +1054,7 @@ async function submitImport() {
 
 async function submitEdit() {
     if (!activeChapterId.value) return
-    const text = editText.value.trim()
+    const text = editText.value
     const exist = chapters.value.find(c => c.id === activeChapterId.value)
     const payload = {
         title: exist?.title || '未命名章节',
@@ -1084,6 +1108,7 @@ async function splitByLLM() {
     })
 
     try {
+        console.log('llm进行台词拆分请求开始', projectId, activeChapterId.value)
         const res = await chapterAPI.splitChapterByLLM(projectId, activeChapterId.value)
         if (res?.code === 200) {
             console.log('llm进行台词拆分请求结果 typeof=', typeof res.data, res.data)
