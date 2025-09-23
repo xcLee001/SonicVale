@@ -119,18 +119,18 @@
 
 
                                 <!-- 新增：导出 Prompt -->
-                                <!-- <el-button @click="exportLLMPrompt" :disabled="!currentChapter">
+                                <el-button @click="exportLLMPrompt" :disabled="!currentChapter">
                                     <el-icon>
                                         <Document />
                                     </el-icon> 导出 Prompt
-                                </el-button> -->
+                                </el-button>
 
                                 <!-- 新增：导入第三方 JSON -->
-                                <!-- <el-button @click="openImportThirdDialog" :disabled="!currentChapter">
+                                <el-button @click="openImportThirdDialog" :disabled="!currentChapter">
                                     <el-icon>
                                         <Upload />
                                     </el-icon> 导入第三方 JSON
-                                </el-button> -->
+                                </el-button>
                             </div>
                         </div>
 
@@ -172,7 +172,7 @@
                             </div>
 
                             <el-table :data="displayedLines" border stripe highlight-current-row class="lines-table"
-                                :header-cell-style="tableHeaderStyle">
+                                :header-cell-style="tableHeaderStyle" :cell-style="cellStyle">
 
                                 <el-table-column prop="line_order" label="序" width="60" align="center"
                                     header-align="center" show-overflow-tooltip />
@@ -295,7 +295,13 @@
                                         <el-text v-else type="info">无音频</el-text>
                                     </template>
                                 </el-table-column>
-                                <el-table-column label="#" width="150" align="center">
+                                <el-table-column label="操作" width="150" align="center">
+                                    <!-- 表头插槽 -->
+                                    <template #header>
+                                        <el-button size="small" type="success" plain @click="insertAtTop">
+                                            首行插入
+                                        </el-button>
+                                    </template>
                                     <template #default="{ row, $index }">
 
                                         <div style="display: flex; gap: 0px; justify-content: center;">
@@ -388,17 +394,13 @@
                                             </el-tag>
                                             <el-tag v-else type="info">未绑定音色</el-tag>
 
-                                            <el-button
-  circle
-  plain
-  :disabled="!roleVoiceMap[r.id]"
-  @click="toggleVoicePlay(roleVoiceMap[r.id])"
-  :title="isPlaying && currentVoiceId === roleVoiceMap[r.id] ? '暂停' : '试听音色'"
->
-  <el-icon>
-    <Headset />
-  </el-icon>
-</el-button>
+                                            <el-button circle plain :disabled="!roleVoiceMap[r.id]"
+                                                @click="toggleVoicePlay(roleVoiceMap[r.id])"
+                                                :title="isPlaying && currentVoiceId === roleVoiceMap[r.id] ? '暂停' : '试听音色'">
+                                                <el-icon>
+                                                    <Headset />
+                                                </el-icon>
+                                            </el-button>
 
                                         </div>
 
@@ -544,9 +546,10 @@
                         <el-option v-for="model in availableModels" :key="model" :label="model" :value="model" />
                     </el-select>
                     <!-- 如果为空就提示 -->
-                <div v-if="!settingsForm.llm_model && settingsForm.llm_provider_id" style="color: #f56c6c; font-size: 12px; margin-top: 4px;">
-                    请选择 LLM 模型
-                </div>
+                    <div v-if="!settingsForm.llm_model && settingsForm.llm_provider_id"
+                        style="color: #f56c6c; font-size: 12px; margin-top: 4px;">
+                        请选择 LLM 模型
+                    </div>
                 </el-form-item>
 
                 <!-- TTS 提供商 -->
@@ -559,14 +562,9 @@
                 <!-- 提示词模板 -->
                 <el-form-item label="提示词模版">
                     <el-select v-model="settingsForm.prompt_id" placeholder="请选择提示词" clearable filterable>
-                        <el-option
-                        v-for="p in prompts"
-                        :key="p.id"
-                        :label="p.name"  
-                        :value="p.id"
-                        />
+                        <el-option v-for="p in prompts" :key="p.id" :label="p.name" :value="p.id" />
                     </el-select>
-                    </el-form-item>
+                </el-form-item>
             </el-form>
 
             <template #footer>
@@ -578,9 +576,9 @@
         <!-- 导入第三方 JSON（台词） -->
         <el-dialog title="导入第三方 JSON（台词）" v-model="dialogImportThird" width="720px">
             <el-alert type="info" :closable="false" class="mb-2"
-                title="请粘贴一个 JSON 数组，每个元素形如 { role_name: string, text_content: string }；提交后将直接写入该章节台词。" />
+                title="请粘贴一个 JSON 数组，每个元素形如 { role_name: string, text_content: string, emotion_name: string, strength_name: string}；提交后将直接写入该章节台词。" />
             <el-input v-model="thirdJsonText" type="textarea" :rows="14"
-                placeholder='[{"role_name":"旁白","text_content":"……"}]' />
+                placeholder='[{"role_name":"旁白","text_content":"……","emotion_name": "平静", "strength_name": "中等"}]' />
             <div class="flex items-center gap-2 mt-2">
                 <el-upload :show-file-list="false" accept=".json,application/json" :before-upload="readThirdJsonFile">
                     <el-button>从文件加载 .json</el-button>
@@ -593,25 +591,56 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="dialogSelectVoice.visible" title="选择音色" width="720px">
+        <el-dialog v-model="dialogSelectVoice.visible" title="选择音色" width="780px">
+            <!-- 筛选区 -->
+            <div class="filter-bar">
+  <el-select
+    ref="filterSelectRef"
+    v-model="filterTags"
+    multiple
+    filterable
+    clearable
+    collapse-tags
+    collapse-tags-tooltip
+    placeholder="按标签筛选"
+    class="filter-select"
+    @change="handleTagChange"
+  >
+    <el-option v-for="tag in allTags" :key="tag" :label="tag" :value="tag" />
+  </el-select>
+
+  <!-- 新增名字搜索框 -->
+  <el-input
+    v-model="searchName"
+    placeholder="搜索名字"
+    clearable
+    style="margin-left: 8px; width: 200px;"
+  />
+</div>
+
+
+            <!-- 音色卡片网格 -->
             <div class="voice-grid">
-                <el-card v-for="v in voicesOptions" :key="v.id" class="voice-card" shadow="hover"
+                <el-card v-for="v in filteredVoices" :key="v.id" class="voice-card" shadow="hover"
                     @click="selectVoice(v)">
                     <div class="voice-card-head">
                         <div class="voice-title">{{ v.name }}</div>
-                        <div class="voice-desc">{{ v.description || '无描述' }}</div>
+                        <div class="voice-desc">
+                            <el-tag v-for="(tag, index) in (v.description ? v.description.split(',') : [])" :key="index"
+                                type="info" effect="plain" size="small">
+                                {{ tag }}
+                            </el-tag>
+                            <span v-if="!v.description">无标签</span>
+                        </div>
                     </div>
-                    <div class="voice-actions">
-                        <el-button
-  circle
-  @click.stop="toggleVoicePlay(v.id)"
-  :title="isPlaying && currentVoiceId === v.id ? '暂停' : '试听'"
->
-  <el-icon>
-    <Headset />
-  </el-icon>
-</el-button>
 
+                    <div class="voice-actions">
+                        <el-button circle @click.stop="toggleVoicePlay(v.id)"
+                            :title="isPlaying && currentVoiceId === v.id ? '暂停' : '试听'">
+                            <el-icon>
+                                <Headset />
+                            </el-icon>
+                        </el-button>
                         <el-button type="primary" size="small" @click.stop="confirmSelectVoice(v)">
                             选择
                         </el-button>
@@ -619,6 +648,8 @@
                 </el-card>
             </div>
         </el-dialog>
+
+
 
         <!-- 拆分预览（解析 get-lines 的结果） -->
         <!-- <el-dialog title="拆分预览" v-model="dialogSplitPreview" width="780px">
@@ -866,20 +897,20 @@ async function openProjectSettings() {
     }
 }
 watch(
-  () => settingsForm.value.llm_provider_id,
-  (newProviderId, oldProviderId) => {
-    // 如果是初始化（oldProviderId === undefined/null），不要清空
-    if (!oldProviderId) {
-      const provider = llmProviders.value.find(p => p.id === newProviderId)
-      availableModels.value = provider ? (provider.model_list ? provider.model_list.split(',') : []) : []
-      return
-    }
+    () => settingsForm.value.llm_provider_id,
+    (newProviderId, oldProviderId) => {
+        // 如果是初始化（oldProviderId === undefined/null），不要清空
+        if (!oldProviderId) {
+            const provider = llmProviders.value.find(p => p.id === newProviderId)
+            availableModels.value = provider ? (provider.model_list ? provider.model_list.split(',') : []) : []
+            return
+        }
 
-    // 只有用户真的切换时才清空
-    settingsForm.value.llm_model = null
-    const provider = llmProviders.value.find(p => p.id === newProviderId)
-    availableModels.value = provider ? (provider.model_list ? provider.model_list.split(',') : []) : []
-  }
+        // 只有用户真的切换时才清空
+        settingsForm.value.llm_model = null
+        const provider = llmProviders.value.find(p => p.id === newProviderId)
+        availableModels.value = provider ? (provider.model_list ? provider.model_list.split(',') : []) : []
+    }
 )
 
 
@@ -1276,36 +1307,36 @@ const isPlaying = ref(false)
 const currentVoiceId = ref(null)
 
 function toggleVoicePlay(voiceId) {
-  if (!voiceId) return
-  const voice = voicesOptions.value.find(v => v.id === voiceId)
-  if (!voice?.reference_path) return ElMessage.warning('该音色未设置参考音频')
+    if (!voiceId) return
+    const voice = voicesOptions.value.find(v => v.id === voiceId)
+    if (!voice?.reference_path) return ElMessage.warning('该音色未设置参考音频')
 
-  const src = native?.pathToFileUrl ? native.pathToFileUrl(voice.reference_path) : voice.reference_path
+    const src = native?.pathToFileUrl ? native.pathToFileUrl(voice.reference_path) : voice.reference_path
 
-  if (currentVoiceId.value === voiceId) {
-    // 切换暂停/继续
-    if (isPlaying.value) {
-      audioPlayer.pause()
-    } else {
-      audioPlayer.play().catch(() => ElMessage.error('无法播放音频'))
+    if (currentVoiceId.value === voiceId) {
+        // 切换暂停/继续
+        if (isPlaying.value) {
+            audioPlayer.pause()
+        } else {
+            audioPlayer.play().catch(() => ElMessage.error('无法播放音频'))
+        }
+        return
     }
-    return
-  }
 
-  // 播放新的音色
-  audioPlayer.pause()
-  audioPlayer.src = src
-  audioPlayer.currentTime = 0
-  currentVoiceId.value = voiceId
-  audioPlayer.play().catch(() => ElMessage.error('无法播放音频'))
+    // 播放新的音色
+    audioPlayer.pause()
+    audioPlayer.src = src
+    audioPlayer.currentTime = 0
+    currentVoiceId.value = voiceId
+    audioPlayer.play().catch(() => ElMessage.error('无法播放音频'))
 }
 
 // 状态监听
 audioPlayer.addEventListener('play', () => { isPlaying.value = true })
 audioPlayer.addEventListener('pause', () => { isPlaying.value = false })
 audioPlayer.addEventListener('ended', () => {
-  isPlaying.value = false
-  currentVoiceId.value = null
+    isPlaying.value = false
+    currentVoiceId.value = null
 })
 
 
@@ -1546,15 +1577,83 @@ async function insertBelow(row) {
         await loadLines() // 以服务端为准
     }
 }
+// 插入到顶部
+async function insertAtTop() {
+    if (!activeChapterId.value) return
+
+    // 1) 先创建新行（后端返回 newId）
+    const createRes = await lineAPI.createLine(projectId, {
+        chapter_id: activeChapterId.value,
+        role_id: null,
+        text_content: '',
+        status: 'pending',
+        line_order: 0 // 随便，后面统一重排
+    })
+    if (createRes?.code !== 200 || !createRes.data?.id) {
+        return ElMessage.error(createRes?.message || '插入失败')
+    }
+    const newId = createRes.data.id
+
+    // 2) 创建“空行”对象，插到最前面
+    const newLine = {
+        id: newId,
+        chapter_id: activeChapterId.value,
+        role_id: null,
+        text_content: '',
+        status: 'pending'
+    }
+
+    lines.value.unshift(newLine) // 插到数组开头
+
+    // 3) 重新构造 orderList
+    const orderList = lines.value.map((line, index) => ({
+        id: line.id,
+        line_order: index + 1
+    }))
+
+    // 4) 调用批量重排接口
+    const reorderRes = await lineAPI.reorderLinesByPut(orderList)
+
+    if (reorderRes?.code === 200) {
+        ElMessage.success('已在第一行插入并更新顺序')
+        await loadLines()
+    } else {
+        ElMessage.error(reorderRes?.message || '更新顺序失败')
+        await loadLines()
+    }
+}
+
 
 async function deleteLine(row) {
+    // 1) 调用后端删除
     const delRes = await lineAPI.deleteLine(row.id)
     if (delRes?.code !== 200) {
         return ElMessage.error(delRes?.message || '删除失败')
     }
-    await loadLines()
 
+    // 2) 前端移除这一行
+    const deleteIndex = lines.value.findIndex(item => item.id === row.id)
+    if (deleteIndex !== -1) {
+        lines.value.splice(deleteIndex, 1)
+    }
+
+    // 3) 重排顺序
+    const orderList = lines.value.map((line, index) => ({
+        id: line.id,
+        line_order: index + 1
+    }))
+
+    const reorderRes = await lineAPI.reorderLinesByPut(orderList)
+
+    if (reorderRes?.code === 200) {
+        ElMessage.success('已删除并更新顺序')
+        await loadLines()
+    } else {
+        ElMessage.error(reorderRes?.message || '更新顺序失败')
+        await loadLines() // 以服务端为准
+    }
 }
+
 
 async function updateLineRole(row) {
     if (!row?.id || row.role_id === null) return
@@ -1617,6 +1716,7 @@ async function readThirdJsonFile(file) {
 }
 
 // 导出 Prompt：调用 GET /export-llm-prompt/{project_id}/{chapter_id}，下载 .txt 文件
+
 async function exportLLMPrompt() {
     if (!projectId || !activeChapterId.value) return
     const res = await chapterAPI.exportLLMPrompt(projectId, activeChapterId.value)
@@ -1626,22 +1726,39 @@ async function exportLLMPrompt() {
             ElMessage.warning('返回内容为空')
             return
         }
-        // 直接下载 .txt
-        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        const chapterName = currentChapter.value?.title || `chapter_${activeChapterId.value}`
-        a.download = `prompt_${projectId}_${activeChapterId.value}_${chapterName}.txt`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        URL.revokeObjectURL(url)
-        ElMessage.success('Prompt 已导出')
+
+        const action = await ElMessageBox.confirm(
+            '是否复制到剪贴板？（取消则下载文件）',
+            '导出方式',
+            {
+                confirmButtonText: '复制',
+                cancelButtonText: '下载',
+                type: 'info',
+                distinguishCancelAndClose: true
+            }
+        ).catch(() => 'download') // 如果关闭或取消，就走下载
+
+        if (action === 'confirm') {
+            await navigator.clipboard.writeText(text)
+            ElMessage.success('已复制到剪贴板')
+        } else {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            const chapterName = currentChapter.value?.title || `chapter_${activeChapterId.value}`
+            a.download = `prompt_${projectId}_${activeChapterId.value}_${chapterName}.txt`
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+            URL.revokeObjectURL(url)
+            ElMessage.success('Prompt 已导出')
+        }
     } else {
         ElMessage.error(res?.message || '导出失败')
     }
 }
+
 
 
 // 导入第三方 JSON：先删除原台词，再导入
@@ -2052,10 +2169,134 @@ async function confirmSelectVoice(voice) {
         ElMessage.error(res?.message || '绑定失败')
     }
 }
+const filterTags = ref([])
+
+// 所有标签集合（从 voicesOptions 提取）
+const allTags = computed(() => {
+    const set = new Set()
+    voicesOptions.value.forEach(v => {
+        (v.description ? v.description.split(',') : []).forEach(tag => {
+            if (tag.trim()) set.add(tag.trim())
+        })
+    })
+    return Array.from(set)
+})
+
+// 按标签筛选
+const searchName = ref('') // 新增
+
+const filteredVoices = computed(() => {
+  return voicesOptions.value.filter(v => {
+    // 先处理名字匹配
+    const matchName = !searchName.value || v.name.includes(searchName.value)
+
+    // 再处理标签匹配
+    if (!filterTags.value.length) return matchName
+    const tags = v.description ? v.description.split(',') : []
+    const matchTags = filterTags.value.every(ft => tags.includes(ft))
+
+    return matchName && matchTags
+  })
+})
+
+const filterSelectRef = ref(null)
+
+function handleTagChange() {
+    // 等下一个 tick 再关闭，不然选中状态可能丢失
+    setTimeout(() => {
+        filterSelectRef.value.blur()
+    }, 0)
+}
+function cellStyle({ row, column }) {
+    // 角色列无数据
+    if (column.property === 'role_id' && !row.role_id) {
+        return { backgroundColor: '#ffecec', color: '#d93025' }
+    }
+
+    // 台词文本列无数据
+    if (column.label === '台词文本' && (!row.text_content || !row.text_content.trim())) {
+        return { backgroundColor: '#ffecec', color: '#d93025' }
+    }
+
+    // 情绪列无数据
+    if (column.label === '情绪' && !row.emotion_id) {
+        return { backgroundColor: '#ffecec', color: '#d93025' }
+    }
+
+    // 强度列无数据
+    if (column.label === '强度' && !row.strength_id) {
+        return { backgroundColor: '#ffecec', color: '#d93025' }
+    }
+
+    return {}
+}
 
 </script>
 
 <style scoped>
+.filter-bar {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.filter-select {
+    flex: 1;
+    max-width: 300px;
+    --el-select-input-height: 32px;
+    /* 控制高度更紧凑 */
+}
+
+.filter-input {
+    flex: 1;
+    max-width: 240px;
+}
+
+.voice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.voice-card {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 140px;
+    transition: transform 0.2s ease;
+}
+
+.voice-card:hover {
+    transform: translateY(-2px);
+}
+
+.voice-card-head {
+    margin-bottom: 10px;
+}
+
+.voice-title {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 6px;
+}
+
+.voice-desc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 13px;
+    color: #666;
+}
+
+.voice-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+
 .page-wrap {
     display: flex;
     flex-direction: column;

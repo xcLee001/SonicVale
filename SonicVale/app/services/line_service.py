@@ -9,7 +9,7 @@ import threading
 from collections import defaultdict
 from typing import List
 
-
+from openpyxl import Workbook
 from sqlalchemy import Sequence
 
 
@@ -402,6 +402,35 @@ class LineService:
                             break
                         fout.write(block.astype(np.float32, copy=False))
         return out_path
+
+
+
+    def export_lines_to_excel(self,lines, file_path="all_lines.xlsx"):
+        # 1) 取出所有数据
+        # lines = self.repository.get_all(chapter_id)
+
+        # 2) 创建 Excel 工作簿
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Lines"
+
+        # 3) 写表头（根据你的数据字段调整）
+        headers = ["序号","角色", "台词"]
+        ws.append(headers)
+
+        # 4) 写内容
+        for line in lines:
+            role = self.role_repository.get_by_id(line.role_id)
+            role_name = role.name if role else "未知角色"
+            ws.append([
+                line.line_order,
+                role_name,
+                line.text_content
+            ])
+        # 5) 保存到文件
+        wb.save(file_path)
+        return file_path
+
     def export_audio(self, chapter_id):
         # 拿到所有的台词
         lines = self.repository.get_all(chapter_id)
@@ -431,8 +460,8 @@ class LineService:
                 subtitle_engine.generate_subtitle(path,subtitle_path)
                 #     将subtitle_path写进line.subtitle_path
                 self.repository.update(line.id,{"subtitle_path":subtitle_path})
-
-
+            # 导出所有数据
+            self.export_lines_to_excel(lines, os.path.join(output_dir_path, "all_lines.xlsx"))
             return True
         else:
             return False

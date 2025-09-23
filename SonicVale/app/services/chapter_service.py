@@ -184,39 +184,63 @@ class ChapterService:
             llm_provider_repository = LLMProviderRepository(db)
             llm_provider = llm_provider_repository.get_by_id(llm_provider_id)
             llm = LLMEngine(llm_provider.api_key, llm_provider.api_base_url, project.llm_model)
+            try:
+                llm.generate_text_test("你好")
+                print("LLM可用")
+            except Exception as e:
+                print("LLM不可用")
+                return {
+                    "success": False,
+                    "message": f"LLM 不可用: {str(e)}"
+                }
             print("开始内容解析")
             try:
                 result = llm.generate_text(prompt)
                 # 解析json，并且构造为List[LineInitDTO]
                 # 解析 JSON 字符串为 Python 对象
                 parsed_data = llm.save_load_json(result)
+                if not parsed_data:
+                    return {
+                        "success": False,
+                        "message": "JSON 解析失败或返回空对象",
+                    }
                 # parsed_data = json.loads(result)
                 # 构造 List[LineInitDTO]
                 line_dtos: List[LineInitDTO] = [LineInitDTO(**item) for item in parsed_data]
-                return  line_dtos
+                return {
+                    "success": True,
+                    "data": line_dtos
+                }
+
             except Exception as e:
                 print("调用 LLM 出错：", e)
-                return None
+                return {
+                    "success": False,
+                    "message": f"调用 LLM 出错: {str(e)}"
+                }
         finally:
             db.close()
 
 
     # 导出指令
-    def get_prompt_content(self, chapter_id):
-        db = SessionLocal()
-        try:
-            #         获取content
-            chapter = self.repository.get_by_id(chapter_id)
-            content = chapter.text_content
-            #          获取角色列表
-            role_repository = RoleRepository(db)
-            roles = role_repository.get_all(chapter.project_id)
-            role_names = [role.name for role in roles]
-            #         组装prompt
-            prompt = get_context2lines_prompt(role_names, content)
-            return  prompt
-        finally:
-            db.close()
+    # def get_prompt_content(self,project_id, chapter_id,prompt):
+    #     db = SessionLocal()
+    #     try:
+    #         #         获取content
+    #         chapter = self.repository.get_by_id(chapter_id)
+    #         content = chapter.text_content
+    #         #          获取角色列表
+    #         role_repository = RoleRepository(db)
+    #         roles = role_repository.get_all(chapter.project_id)
+    #         role_names = [role.name for role in roles]
+    #         #         组装prompt
+    #         # 获取project
+    #
+    #         prompt = self.fill_prompt(prompt, role_names, emotion_names, strength_names, content)
+    #         prompt = get_context2lines_prompt(role_names, content)
+    #         return  prompt
+    #     finally:
+    #         db.close()
 
 
 

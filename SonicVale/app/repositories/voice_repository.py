@@ -33,8 +33,7 @@ class VoiceRepository:
         if not voice:
             return None
         for key, value in voice_data.items():
-            if value is not None:  # 只更新不为空的字段
-                setattr(voice, key, value)
+            setattr(voice, key, value)
 
         self.db.commit()
         self.db.refresh(voice)

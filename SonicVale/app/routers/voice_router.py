@@ -86,7 +86,7 @@ def update_voice(voice_id: int, dto: VoiceCreateDTO, voice_service: VoiceService
     voice = voice_service.get_voice(voice_id)
     if voice is None:
         return Res(data=None, code=404, message="音色不存在")
-    res = voice_service.update_voice(voice_id, dto.dict(exclude_unset=True))
+    res = voice_service.update_voice(voice_id, dto.dict())
     if res:
         return Res(data=dto, code=200, message="修改成功")
     else:

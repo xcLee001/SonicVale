@@ -2,6 +2,8 @@
 import asyncio
 import io
 import json
+import logging
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
@@ -160,65 +162,125 @@ async def delete_chapter(chapter_id: int, chapter_service: ChapterService = Depe
 
 
 # 根据内容进行解析得到json,初次解析，然后可编辑角色昵称以及内容，以及可以合并上下或者增加。（json都是多条，角色+台词）
-@router.get("/get-lines/{project_id}/{chapter_id}",response_model=Res[str],summary="根据内容进行解析得到json",description="根据内容进行解析得到json")
-async def get_lines(project_id:int,chapter_id: int, chapter_service: ChapterService = Depends(get_chapter_service),line_service: LineService = Depends(get_line_service),
-                    role_service: RoleService = Depends(get_role_service),
-                    emotion_service: EmotionService = Depends(get_emotion_service),
-                    strength_service: StrengthService = Depends(get_strength_service),
-                    prompt_service: PromptService = Depends(get_prompt_service),
-                    project_service: ProjectService = Depends(get_project_service)):
-    contents = chapter_service.split_text(chapter_id,800)
+@router.get(
+    "/get-lines/{project_id}/{chapter_id}",
+    response_model=Res[str],
+    summary="根据内容进行解析得到json",
+    description="根据内容进行解析得到json"
+)
+async def get_lines(
+    project_id: int,
+    chapter_id: int,
+    chapter_service: ChapterService = Depends(get_chapter_service),
+    line_service: LineService = Depends(get_line_service),
+    role_service: RoleService = Depends(get_role_service),
+    emotion_service: EmotionService = Depends(get_emotion_service),
+    strength_service: StrengthService = Depends(get_strength_service),
+    prompt_service: PromptService = Depends(get_prompt_service),
+    project_service: ProjectService = Depends(get_project_service)
+):
+    # 判断章节内容是否存在
+    chapter = chapter_service.get_chapter(chapter_id)
+    if chapter.text_content is None:
+        return Res(data=None, code=400, message="章节内容不存在")
+    try:
+        contents = chapter_service.split_text(chapter_id, 800)
+    except Exception as e:
+        logging.error(f"章节拆分失败: {e}\n{traceback.format_exc()}")
+        return Res(data=None, code=500, message="章节拆分失败")
 
     all_line_data = []
-    # 获取角色列表
-    roles = role_service.get_all_roles(project_id)
-    # 转化成set
-    roles = set([role.name for role in roles])
-    # 获得所有情绪枚举列表
-    emotions = emotion_service.get_all_emotions()
-    emotion_names = [emotion.name for emotion in emotions]
-    # 获得所有情绪强度列表
-    strengths = strength_service.get_all_strengths()
-    strength_names = [strength.name for strength in strengths]
 
-    emotions_dict = {emotion.name: emotion.id for emotion in emotions}
-    strengths_dict = {strength.name: strength.id for strength in strengths}
-    # 提示词
+    try:
+        roles = role_service.get_all_roles(project_id)
+        roles = set(role.name for role in roles)
+        emotions = emotion_service.get_all_emotions()
+        strengths = strength_service.get_all_strengths()
+
+        emotion_names = [emotion.name for emotion in emotions]
+        strength_names = [strength.name for strength in strengths]
+        emotions_dict = {emotion.name: emotion.id for emotion in emotions}
+        strengths_dict = {strength.name: strength.id for strength in strengths}
+    except Exception as e:
+        logging.error(f"初始化角色/情绪/强度失败: {e}\n{traceback.format_exc()}")
+        return Res(data=None, code=500, message="初始化角色/情绪/强度失败")
+
     project = project_service.get_project(project_id)
-    prompt = prompt_service.get_prompt(project.prompt_id)
-    # 提示词验证
+    # 判断tts，llm，model是否存在
+    if project.tts_provider_id is None or project.llm_provider_id is None or project.llm_model is None:
+        return Res(data=None, code=500, message="tts/llm/model不存在")
+
+
+    prompt = prompt_service.get_prompt(project.prompt_id) if project else None
     if prompt is None:
         return Res(data=None, code=500, message="提示词不存在")
+
     for idx, content in enumerate(contents):
-        print(f"解析第 {idx + 1}/{len(contents)} 段...")
+        logging.info(f"解析第 {idx + 1}/{len(contents)} 段...")
 
         try:
-            # roles转化成list
             roles_list = list(roles)
-            print(roles_list)
-            lines_data = chapter_service.para_content(prompt.content,chapter_id, content,roles_list,emotion_names,strength_names)
-            #提取lines_data中所有的角色，然后加入roles中
+            result = chapter_service.para_content(
+                prompt.content, chapter_id, content,
+                roles_list, emotion_names, strength_names
+            )
+
+            if not result["success"]:
+                return Res(
+                data=None,
+                code=500,
+                message=result["message"]
+                )
+
+            # 提取lines_data中的角色
+            lines_data = result["data"]
             for line_data in lines_data:
                 roles.add(line_data.role_name)
-        except Exception as e:
-            print(f"解析第 {idx + 1} 段失败：{e}")
-            return Res(data=None, code=500, message=f"解析失败：第 {idx + 1} 段处理出错")
 
-        if lines_data:
             all_line_data.extend(lines_data)
-        else:
-            print(f"第 {idx + 1} 段返回空结果或解析失败")
-            return Res(data=None, code=500, message=f"解析失败：第 {idx + 1} 段未返回有效结果")
 
-    # 全部成功后，写入数据库
-    line_service.update_init_lines(all_line_data, project_id, chapter_id,emotions_dict, strengths_dict)
+        except Exception as e:
+            logging.error(
+                f"解析第 {idx + 1} 段失败: {e}\n{traceback.format_exc()}"
+            )
+            return Res(data=None, code=500, message=f"解析失败：第 {idx + 1} 段处理出错，错误信息：{e}")
+
+    try:
+        line_service.update_init_lines(
+            all_line_data, project_id, chapter_id, emotions_dict, strengths_dict
+        )
+    except Exception as e:
+        logging.error(f"写入数据库失败: {e}\n{traceback.format_exc()}")
+        return Res(data=None, code=500, message="写入数据库失败")
+
     return Res(data=None, code=200, message="解析成功")
 
 
 # 导出LLM prompt指令
 @router.get("/export-llm-prompt/{project_id}/{chapter_id}",response_model=Res[str],summary="导出LLM prompt指令",description="导出LLM prompt指令")
-async def export_llm_prompt(chapter_id: int, chapter_service: ChapterService = Depends(get_chapter_service)):
-    res = chapter_service.get_prompt_content(chapter_id)
+async def export_llm_prompt(project_id:int,chapter_id: int, chapter_service: ChapterService = Depends(get_chapter_service),
+                            project_service = Depends(get_project_service),
+                            prompt_service: PromptService = Depends(get_prompt_service),
+                            role_service: RoleService = Depends(get_role_service),
+                            emotion_service: EmotionService = Depends(get_emotion_service),
+                            strength_service: StrengthService = Depends(get_strength_service)):
+    try:
+        roles = role_service.get_all_roles(project_id)
+        roles = [role.name for role in roles]
+        emotions = emotion_service.get_all_emotions()
+        strengths = strength_service.get_all_strengths()
+
+        emotion_names = [emotion.name for emotion in emotions]
+        strength_names = [strength.name for strength in strengths]
+    except Exception as e:
+        return Res(data=None, code=500, message="初始化角色/情绪/强度失败")
+
+    project = project_service.get_project(project_id)
+    prompt = prompt_service.get_prompt(project.prompt_id) if project else None
+    chapter = chapter_service.get_chapter(chapter_id)
+    content = chapter.text_content
+    res = chapter_service.fill_prompt(prompt.content, roles, emotion_names, strength_names, content)
+    # record
     return Res(data=res, code=200, message="导出成功")
 
 # 解析第三方的json
