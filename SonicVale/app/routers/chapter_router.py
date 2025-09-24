@@ -285,12 +285,20 @@ async def export_llm_prompt(project_id:int,chapter_id: int, chapter_service: Cha
 
 # 解析第三方的json
 @router.post("/import-lines/{project_id}/{chapter_id}",response_model=Res[str],summary="导入第三方json",description="导入第三方json")
-async def import_lines(project_id: int,chapter_id: int,data:str=Form( ...),line_service: LineService = Depends(get_line_service)):
+async def import_lines(project_id: int,chapter_id: int,data:str=Form( ...),line_service: LineService = Depends(get_line_service),
+                       emotion_service: EmotionService = Depends(get_emotion_service),
+                       strength_service: StrengthService = Depends(get_strength_service)):
     # 解析data
     lines_data = json.loads(data)
     # 转化成List[LineInitDTO]
+    emotions = emotion_service.get_all_emotions()
+    strengths = strength_service.get_all_strengths()
+
+    emotions_dict = {emotion.name: emotion.id for emotion in emotions}
+    strengths_dict = {strength.name: strength.id for strength in strengths}
+
     lines_data = [LineInitDTO(**line) for line in lines_data]
-    line_service.update_init_lines(lines_data, project_id, chapter_id)
+    line_service.update_init_lines(lines_data, project_id, chapter_id, emotions_dict, strengths_dict)
     return Res(data=None, code=200, message="导入成功")
 
 
