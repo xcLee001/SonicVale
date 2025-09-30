@@ -53,7 +53,16 @@ export function processAudio(line_id, payload) {
 }
 
 // 导出结果和字幕
-export function exportLines(chapter_id) {
-  // GET /lines/export/{project_id}/{chapter_id}?format=...
-  return request.get(`/lines/export-audio/${chapter_id}`)
+// 导出接口，带 single 参数
+export function exportLines(chapter_id, single = false) {
+  return request.get(`/lines/export-audio/${chapter_id}`, {
+    params: { single }
+  })
+}
+
+
+// 矫正字幕
+export function correctLines(chapter_id) {
+  // POST /lines/correct/{chapter_id}
+  return request.post(`/lines/correct-subtitle/${chapter_id}`)
 }

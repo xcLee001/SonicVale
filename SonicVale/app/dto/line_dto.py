@@ -20,6 +20,8 @@ class LineAudioProcessDTO(BaseModel):
     volume: Optional[float] = 1.0
     start_ms: Optional[int] = None
     end_ms: Optional[int] = None
+#     静止时间
+    tail_silence_sec: Optional[float] = 0.0
 
 class LineCreateDTO(BaseModel):
     chapter_id: int

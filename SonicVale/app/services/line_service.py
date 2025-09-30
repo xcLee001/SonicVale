@@ -198,99 +198,6 @@ class LineService:
             print(f"[update_audio_path] 失败: {e}")
             return False
 
-    # 处理音频 文件(变速有问题。。。。。。后面重新改)
-    # def process_audio_file_pitch_preserve(
-    #         self,
-    #         audio_path: str,
-    #         speed: float = 1.0,
-    #         volume: float = 1.0,
-    #         start_ms: int | None = None,
-    #         end_ms: int | None = None,
-    #         out_path: str | None = None,
-    #         normalize_if_clipping: bool = True,
-    #         volume_ui_0_2: bool = False,  # 前端 0~2 滑块时设 True
-    # ):
-    #     """
-    #     简化版：忽略 speed（不做变速/变调），仅按需裁剪 + 音量 + 限幅，然后写回。
-    #     其余参数保留以兼容调用方，但不参与处理。
-    #     """
-    #     import os, tempfile
-    #     import numpy as np
-    #     import soundfile as sf
-    #
-    #     if not os.path.exists(audio_path):
-    #         raise FileNotFoundError(audio_path)
-    #
-    #     # -------- 参数规整（速度被忽略，但做个基本夹紧以避免非法值传入）--------
-    #     _speed = float(speed or 1.0)
-    #     _speed = float(np.clip(_speed, 0.25, 4.0))  # 仅保障范围，本实现不使用
-    #
-    #     volume = 1.0 if volume is None else float(volume)
-    #     if volume < 0:
-    #         raise ValueError("volume must be >= 0")
-    #     # 若前端滑块是 0~2，此处与前端 setVolume(vol/2) 对齐
-    #     gain_user = (volume / 2.0) if volume_ui_0_2 else volume
-    #
-    #     # -------- 读取（保留多声道）--------
-    #     data, sr = sf.read(audio_path, dtype="float32", always_2d=True)  # (n, ch)
-    #     if data.size == 0:
-    #         target_path = out_path or audio_path
-    #         os.makedirs(os.path.dirname(target_path) or ".", exist_ok=True)
-    #         sf.write(target_path, data, sr, format="WAV", subtype="PCM_16")
-    #         return target_path
-    #
-    #     n, ch = data.shape
-    #
-    #     # -------- （可选）裁剪（基于原始时间线）--------
-    #     def ms_to_idx(ms: int) -> int:
-    #         return int(round(ms * sr / 1000.0))
-    #
-    #     if start_ms is not None and end_ms is not None and end_ms > start_ms:
-    #         s = max(0, ms_to_idx(int(start_ms)))
-    #         e = min(n, ms_to_idx(int(end_ms)))
-    #         if e - s > 1:
-    #             data = data[s:e, :]
-    #             n = data.shape[0]
-    #
-    #     # -------- 响度基线（仅记录；不做拉伸则不做 lufs 补偿）--------
-    #     # （如果后续你想在“只调音量”时也做响度校正，可在此启用，但通常不需要）
-    #     # def rms(x: np.ndarray) -> float:
-    #     #     return float(np.sqrt(np.mean(np.square(x), dtype=np.float64))) if x.size else 0.0
-    #     # rms_in = rms(data)
-    #
-    #     # -------- 不做任何速度相关处理（忽略 speed）--------
-    #     sr_out = sr
-    #     # data 时间轴保持不变
-    #
-    #     # -------- 用户音量 --------
-    #     if abs(gain_user - 1.0) > 1e-6:
-    #         data = data * gain_user
-    #
-    #     # -------- 软限幅 / 防削顶 --------
-    #     if normalize_if_clipping and data.size:
-    #         peak = float(np.max(np.abs(data)))
-    #         if peak > 1.0:
-    #             # 简单做整体归一；如果你偏好软限幅，可改为 tanh 柔限：
-    #             # k = 2.5; x = data / peak; data = (np.tanh(k*x) / np.tanh(k)) * 0.98
-    #             data = data / peak
-    #
-    #     # -------- 写回（原子替换）--------
-    #     target_path = out_path or audio_path
-    #     os.makedirs(os.path.dirname(target_path) or ".", exist_ok=True)
-    #     tmp_dir = os.path.dirname(target_path) or "."
-    #     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav", dir=tmp_dir) as tmp:
-    #         tmp_path = tmp.name
-    #     try:
-    #         sf.write(tmp_path, data.astype(np.float32, copy=False), sr_out, format="WAV", subtype="PCM_16")
-    #         os.replace(tmp_path, target_path)
-    #     finally:
-    #         try:
-    #             os.remove(tmp_path)
-    #         except OSError:
-    #             pass
-    #
-    #     return target_path
-
     def process_audio_ffmpeg(
             self,
             audio_path: str,
@@ -360,12 +267,224 @@ class LineService:
         os.replace(tmp_path, target_path)
         return target_path
 
+
+    # 删除区间进行拼接
+    def process_audio_ffmpeg_cut(
+            self,
+            audio_path: str,
+            speed: float = 1.0,
+            volume: float = 1.0,
+            start_ms: int | None = None,
+            end_ms: int | None = None,
+            tail_silence_sec: float = 0.0,  # 末尾静音时长，单位秒
+            out_path: str | None = None,
+            keep_format: bool = True,  # 是否保持原文件采样率/声道
+            default_sr: int = 44100,
+            default_ch: int = 2
+    ):
+        """
+        使用 ffmpeg 对音频进行变速 (0.5~2.0)、音量调整。
+        删除 [start_ms, end_ms] 区间，并拼接前后音频。
+        输出 WAV PCM16。
+        可在末尾附加 tail_silence_sec 秒静音。
+        """
+        ffmpeg_path = getFfmpegPath()
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(audio_path)
+
+        # 获取原始参数
+        info = sf.info(audio_path)
+        target_sr = info.samplerate if keep_format else default_sr
+        target_ch = info.channels if keep_format else default_ch
+
+        # 参数规整
+        speed = float(np.clip(speed or 1.0, 0.5, 2.0))
+        volume = 1.0 if volume is None else max(0.0, float(volume))
+
+        # 输出路径
+        target_path = out_path or audio_path
+        os.makedirs(os.path.dirname(target_path) or ".", exist_ok=True)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav",
+                                         dir=os.path.dirname(target_path) or ".") as tmp:
+            tmp_path = tmp.name
+
+        # 构建 ffmpeg 命令
+        if start_ms is None or end_ms is None or end_ms <= start_ms:
+            # 无剪切
+            if tail_silence_sec > 0:
+                # 添加静音
+                cmd = [
+                    ffmpeg_path, "-y",
+                    "-i", audio_path,
+                    "-f", "lavfi", "-t", str(tail_silence_sec),
+                    "-i", f"anullsrc=channel_layout={'stereo' if target_ch == 2 else 'mono'}:sample_rate={target_sr}",
+                    "-filter_complex",
+                    f"[0:a]atempo={speed},volume={volume}[main];"
+                    f"[main][1:a]concat=n=2:v=0:a=1[out]",
+                    "-map", "[out]",
+                    "-ar", str(target_sr),
+                    "-ac", str(target_ch),
+                    "-c:a", "pcm_s16le",
+                    tmp_path
+                ]
+            elif tail_silence_sec < 0:
+                # 裁掉末尾 abs(tail_silence_sec)
+                cut_dur = info.duration + tail_silence_sec
+                if cut_dur <= 0:
+                    cut_dur = 0  # 整段裁掉
+
+                cmd = [
+                    ffmpeg_path, "-y",
+                    "-i", audio_path,
+                    "-filter_complex",
+                    f"[0:a]atempo={speed},volume={volume},atrim=0:{cut_dur}[out]",
+                    "-map", "[out]",
+                    "-ar", str(target_sr),
+                    "-ac", str(target_ch),
+                    "-c:a", "pcm_s16le",
+                    tmp_path
+                ]
+            else:
+                # 不处理末尾
+                cmd = [
+                    ffmpeg_path, "-y", "-i", audio_path,
+                    "-af", f"atempo={speed},volume={volume}",
+                    "-ar", str(target_sr),
+                    "-ac", str(target_ch),
+                    "-c:a", "pcm_s16le",
+                    tmp_path
+                ]
+
+
+        else:
+
+            # 剪切
+
+            start_sec = start_ms / 1000
+
+            end_sec = end_ms / 1000
+
+            if tail_silence_sec > 0:
+
+                # 拼接 + 添加静音
+
+                cmd = [
+
+                    ffmpeg_path, "-y",
+
+                    "-i", audio_path,
+
+                    "-f", "lavfi", "-t", str(tail_silence_sec),
+
+                    "-i", f"anullsrc=channel_layout={'stereo' if target_ch == 2 else 'mono'}:sample_rate={target_sr}",
+
+                    "-filter_complex",
+
+                    f"[0:a]atrim=0:{start_sec},asetpts=PTS-STARTPTS[first];"
+
+                    f"[0:a]atrim={end_sec},asetpts=PTS-STARTPTS[second];"
+
+                    f"[first][second]concat=n=2:v=0:a=1,atempo={speed},volume={volume}[main];"
+
+                    f"[main][1:a]concat=n=2:v=0:a=1[out]",
+
+                    "-map", "[out]",
+
+                    "-ar", str(target_sr),
+
+                    "-ac", str(target_ch),
+
+                    "-c:a", "pcm_s16le",
+
+                    tmp_path
+
+                ]
+
+            elif tail_silence_sec < 0:
+
+                # 拼接后再裁掉末尾
+
+                cut_dur = info.duration + tail_silence_sec
+                if cut_dur <= 0:
+                    cut_dur = 0  # 整段裁掉
+
+                cmd = [
+
+                    ffmpeg_path, "-y", "-i", audio_path,
+
+                    "-filter_complex",
+
+                    f"[0:a]atrim=0:{start_sec},asetpts=PTS-STARTPTS[first];"
+
+                    f"[0:a]atrim={end_sec},asetpts=PTS-STARTPTS[second];"
+
+                    f"[first][second]concat=n=2:v=0:a=1,atempo={speed},volume={volume},atrim=0:{cut_dur}[out]",
+
+                    "-map", "[out]",
+
+                    "-ar", str(target_sr),
+
+                    "-ac", str(target_ch),
+
+                    "-c:a", "pcm_s16le",
+
+                    tmp_path
+
+                ]
+
+            else:
+
+                # 拼接但不处理末尾
+
+                cmd = [
+
+                    ffmpeg_path, "-y", "-i", audio_path,
+
+                    "-filter_complex",
+
+                    f"[0:a]atrim=0:{start_sec},asetpts=PTS-STARTPTS[first];"
+
+                    f"[0:a]atrim={end_sec},asetpts=PTS-STARTPTS[second];"
+
+                    f"[first][second]concat=n=2:v=0:a=1,atempo={speed},volume={volume}[out]",
+
+                    "-map", "[out]",
+
+                    "-ar", str(target_sr),
+
+                    "-ac", str(target_ch),
+
+                    "-c:a", "pcm_s16le",
+
+                    tmp_path
+
+                ]
+
+        # 执行 ffmpeg
+        subprocess.run(
+            cmd, check=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        )
+
+        # 软限幅：避免 clipping
+        data, sr = sf.read(tmp_path, dtype="float32", always_2d=True)
+        peak = float(np.max(np.abs(data)))
+        if peak > 1.0:
+            data = data / peak
+            sf.write(tmp_path, data, sr, format="WAV", subtype="PCM_16")
+
+        os.replace(tmp_path, target_path)
+        return target_path
+
     def process_audio(self, line_id, dto:LineAudioProcessDTO):
         line = self.get_line(line_id)
         if line:
         #     读取音频文件
-            audio_file =self.process_audio_ffmpeg(line.audio_path, dto.speed, dto.volume,dto.start_ms,dto.end_ms)
+        #     audio_file =self.process_audio_ffmpeg(line.audio_path, dto.speed, dto.volume,dto.start_ms,dto.end_ms)
+        # 删除拼接
+            audio_file = self.process_audio_ffmpeg_cut(line.audio_path, dto.speed, dto.volume, dto.start_ms, dto.end_ms, dto.tail_silence_sec)
             return True
+
         else:
             return False
 
@@ -431,7 +550,7 @@ class LineService:
         wb.save(file_path)
         return file_path
 
-    def export_audio(self, chapter_id):
+    def export_audio(self, chapter_id,single=False):
         # 拿到所有的台词
         lines = self.repository.get_all(chapter_id)
 
@@ -448,23 +567,27 @@ class LineService:
             output_subtitle_path = os.path.join(output_dir_path, "result.srt")
             subtitle_engine.generate_subtitle(output_path,output_subtitle_path)
 
-            # 生成所有的单条字幕
-            subtitle_dir_path = os.path.join(os.path.dirname(paths[0]), "subtitles")
-            # 先清空这个文件夹
-            shutil.rmtree(subtitle_dir_path, ignore_errors=True)
-            os.makedirs(subtitle_dir_path, exist_ok=True)
-            for line in lines:
-                path = line.audio_path
-                base_name = os.path.splitext(os.path.basename(path))[0]
-                subtitle_path = os.path.join(subtitle_dir_path, base_name + ".srt")
-                subtitle_engine.generate_subtitle(path,subtitle_path)
-                #     将subtitle_path写进line.subtitle_path
-                self.repository.update(line.id,{"subtitle_path":subtitle_path})
+
+            if single:
+                # 生成所有的单条字幕
+                subtitle_dir_path = os.path.join(os.path.dirname(paths[0]), "subtitles")
+                # 先清空这个文件夹
+                shutil.rmtree(subtitle_dir_path, ignore_errors=True)
+                os.makedirs(subtitle_dir_path, exist_ok=True)
+                for line in lines:
+                    path = line.audio_path
+                    base_name = os.path.splitext(os.path.basename(path))[0]
+                    subtitle_path = os.path.join(subtitle_dir_path, base_name + ".srt")
+                    subtitle_engine.generate_subtitle(path,subtitle_path)
+                    #     将subtitle_path写进line.subtitle_path
+                    self.repository.update(line.id,{"subtitle_path":subtitle_path})
             # 导出所有数据
             self.export_lines_to_excel(lines, os.path.join(output_dir_path, "all_lines.xlsx"))
             return True
         else:
             return False
+
+
 
     def generate_subtitle(self, line_id, dto):
         # 获取台词
@@ -476,6 +599,30 @@ class LineService:
             return dto.subtitle_path
         else:
             return None
+#     字幕矫正
+    def correct_subtitle(self, chapter_id):
+        lines = self.repository.get_all(chapter_id)
+        paths = [line.audio_path for line in lines]
+        # 读取所有台词，组成一个文本
+        text = "\n".join([line.text_content for line in lines])
+        output_dir_path = os.path.join(os.path.dirname(paths[0]), "result")
+        output_subtitle_path = os.path.join(output_dir_path, "result.srt")
+        if os.path.exists(output_subtitle_path):
+            subtitle_engine.correct_srt_file(text,output_subtitle_path)
+            print("整体字幕矫正完成")
+        else:
+            print("请先导出音频")
+            return False
+
+#         将单条字幕也进行矫正
+        for line in lines:
+            subtitle_path = line.subtitle_path
+            line_text = line.text_content
+            if os.path.exists(subtitle_path):
+                subtitle_engine.correct_srt_file(line_text,subtitle_path)
+                print(f"单条字幕矫正完成：{line.id}")
+
+        return  True
 
 #     生成字幕
 #     def generate_subtitle(self, res_path):

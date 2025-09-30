@@ -27,6 +27,7 @@ from app.services.tts_provider_service import TTSProviderService
 
 import os
 import sys
+
 root_path = os.getcwd()
 sys.path.append(root_path)
 # =========================

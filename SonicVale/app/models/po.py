@@ -133,6 +133,9 @@ class LinePO(Base):
     audio_path = Column(String(500), nullable=True)
     subtitle_path = Column(String(500), nullable=True)
 
+    # 间隔停留时间（秒）
+    # wait_time = Column(Integer, default=0, nullable=True)
+
     # 状态
     status = Column(
         Enum("pending", "processing", "done", "failed", name="line_status"),

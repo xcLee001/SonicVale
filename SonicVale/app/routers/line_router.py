@@ -3,7 +3,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Body,Request
+from fastapi import APIRouter, Depends, HTTPException, Body, Request, Query
 from sqlalchemy.orm import Session
 
 from app.core.config import getConfigPath
@@ -275,18 +275,23 @@ async def process_audio(line_id: int, dto: LineAudioProcessDTO, line_service: Li
 
 # 导出音频与字幕
 @router.get("/export-audio/{chapter_id}")
-async def export_audio(chapter_id: int, line_service: LineService = Depends(get_line_service)):
-    res = line_service.export_audio(chapter_id)
+async def export_audio(chapter_id: int,
+                       single: bool = Query(False, description="是否导出单条音频字幕"),
+                       line_service: LineService = Depends(get_line_service)):
+    res = line_service.export_audio(chapter_id, single)
     if not res:
         return Res(data=None, code=400, message="导出失败")
     return Res(data=res, code=200, message="导出成功")
 
 
 # 生成单条音频的字幕（已经有音频）
-@router.post("/generate-subtitle/{line_id}")
-async def generate_subtitle(line_id: int, dto: LineAudioProcessDTO, line_service: LineService = Depends(get_line_service)):
-    res = line_service.generate_subtitle(line_id,dto)
-    if not res:
-        return Res(data=None, code=400, message="生成失败")
+#
+
+# 矫正字幕
+@router.post("/correct-subtitle/{chapter_id}")
+async def correct_subtitle(chapter_id: int, line_service: LineService = Depends(get_line_service)):
+    res = line_service.correct_subtitle(chapter_id)
+    if res is False:
+        return Res(data=None, code=400, message="请先导出音频")
     return Res(data=res, code=200, message="生成成功")
 

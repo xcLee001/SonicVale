@@ -63,11 +63,24 @@ class TTSProviderService:
         # ping api
         # 调用
         try:
-            # 发送一个简单 GET 请求，超时设置短一点避免卡住
             resp = requests.get(api_base_url, timeout=5)
 
             # 如果返回 200-399 都认为是通的（有些服务会 302 重定向）
-            return 200 <= resp.status_code < 400
+            if 200 <= resp.status_code < 400:
+                try:
+                    data = resp.json()
+                    if "endpoints" in data:
+                        return True
+                    else:
+                        print("TTS provider test failed: 'endpoints' missing in response")
+                        return False
+                except ValueError:
+                    print("TTS provider test failed: response is not valid JSON")
+                    return False
+            else:
+                print(f"TTS provider test failed: status {resp.status_code}")
+                return False
+
         except Exception as e:
             # 这里可以打印日志，方便排查
             print(f"TTS provider test failed: {e}")

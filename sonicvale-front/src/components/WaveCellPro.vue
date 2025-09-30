@@ -3,21 +3,15 @@
   <div class="wavecell">
     <div class="bar">
       <!-- 替换原来的按钮 -->
-<el-button
-  :type="isPlaying ? 'danger' : 'success'"
-  class="play-btn"
-  :class="{ playing: isPlaying }"
-  circle
-  size="mid"
-  @click="togglePlay"
->
-  <template #icon>
-    <el-icon :size="22">
-      <VideoPause v-if="isPlaying" />
-      <VideoPlay v-else />
-    </el-icon>
-  </template>
-</el-button>
+      <el-button :type="isPlaying ? 'danger' : 'success'" class="play-btn" :class="{ playing: isPlaying }" circle
+        size="mid" @click="togglePlay">
+        <template #icon>
+          <el-icon :size="22">
+            <VideoPause v-if="isPlaying" />
+            <VideoPlay v-else />
+          </el-icon>
+        </template>
+      </el-button>
 
 
       <span class="lbl">速度</span>
@@ -25,11 +19,14 @@
 
       <span class="lbl">音量</span>
       <el-slider v-model="vol2x" :min="0" :max="2.0" :step="0.01" class="slider" />
-      
 
-      <el-switch v-model="regionMode" active-text="标注" inactive-text="浏览" />
-      <el-button size="small" @click="makeRegion" :disabled="hasRegion">区间选择</el-button>
-      <el-button size="small" @click="loopRegion" :disabled="!hasRegion">循环区间</el-button>
+      <span class="lbl">添加间隔(s)</span>
+      <el-input-number v-model="tailSilence" :min="0" :max="30" :step="0.1" size="small" />
+
+
+      <!-- <el-switch v-model="regionMode" active-text="标注" inactive-text="浏览" /> -->
+      <el-button size="small" @click="makeRegion" :disabled="hasRegion">删除区间选择</el-button>
+      <!-- <el-button size="small" @click="loopRegion" :disabled="!hasRegion">循环区间</el-button> -->
       <el-button size="small" @click="clearRegion" :disabled="!hasRegion">清除区间</el-button>
 
       <el-button size="small" type="primary" @click="confirmProcess" :disabled="!ready">应用处理</el-button>
@@ -61,6 +58,7 @@ const emit = defineEmits([
   'confirm',             // ({ speed, volume, start_ms, end_ms })
   'ready',
   'dispose',             // () 组件卸载时触发
+  'ended',               // () 播放结束
 ])
 
 const container = ref(null)
@@ -76,6 +74,8 @@ const ready = ref(false)
 const rate = ref(props.speed || 1.0)
 const vol2x = ref(Math.max(0, Math.min(props.volume2x ?? 1.0, 1.0))) // 统一 0~1
 const regionMode = ref(false)
+
+const tailSilence = ref(0) // 默认 0 秒
 
 const hasRegion = computed(() => !!region.value)
 
@@ -99,7 +99,7 @@ onMounted(async () => {
 
   // v7：registerPlugin 获取实例
   regionsPlugin = ws.registerPlugin(Regions.create({ dragSelection: true }))
-  minimapPlugin  = ws.registerPlugin(Minimap.create({ container: minimap.value, height: 24 }))
+  minimapPlugin = ws.registerPlugin(Minimap.create({ container: minimap.value, height: 24 }))
 
   ws.on('ready', () => {
     ready.value = true
@@ -116,7 +116,7 @@ onMounted(async () => {
         color: 'rgba(64,158,255,0.15)',
       })
     }
-    emit('ready',ws)
+    emit('ready', ws)
   })
 
   ws.on('play', () => {
@@ -124,6 +124,11 @@ onMounted(async () => {
     emit('request-stop-others', ws)
   })
   ws.on('pause', () => { isPlaying.value = false })
+  ws.on('finish', () => {
+    isPlaying.value = false        // 确保状态同步
+    console.log('播放结束，触发 ended 事件')
+    emit('ended', { src: props.src })                 // 通知父组件
+  })
 
   // 区域事件（v7：挂 regionsPlugin）
   regionsPlugin.on('region-created', r => { region.value = r })
@@ -139,9 +144,9 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  try { 
-    emit('dispose',ws)
-    ws && ws.destroy() 
+  try {
+    emit('dispose', ws)
+    ws && ws.destroy()
   }
   finally { ws = null; regionsPlugin = null; minimapPlugin = null; region.value = null }
 })
@@ -153,7 +158,7 @@ watch(vol2x, v => ws && ws.setVolume(Math.max(0, Math.min(v ?? 1.0, 1.0))))
 // 切换“标注/浏览”：开关拖拽建区
 watch(regionMode, (on) => {
   if (regionsPlugin?.setOptions) regionsPlugin.setOptions({ dragSelection: !!on })
-  
+
 })
 
 function togglePlay() {
@@ -169,7 +174,7 @@ function makeRegion() {
   region.value = regionsPlugin.addRegion({
     start, end,
     drag: true, resize: true,
-    color: 'rgba(64,158,255,0.15)',
+    color: 'rgba(255,0,0,0.15)',
   })
 }
 
@@ -183,21 +188,47 @@ function clearRegion() {
 
 async function confirmProcess() {
   const start_ms = region.value ? Math.round(region.value.start * 1000) : null
-  const end_ms   = region.value ? Math.round(region.value.end   * 1000) : null
+  const end_ms = region.value ? Math.round(region.value.end * 1000) : null
   await ElMessageBox.confirm('确认按当前试听参数处理该音频吗？（会生成新文件或覆盖，视后端实现）', '确认处理', { type: 'warning' })
   emit('confirm', {
     speed: Number(rate.value || 1.0),
     volume: Number(vol2x.value || 1.0),
     start_ms, end_ms,
+    tail_silence_sec: Number(tailSilence.value || 0),
   })
 }
 </script>
 
 <style scoped>
-.wavecell { display: flex; flex-direction: column; gap: 6px; }
-.bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.lbl { font-size: 12px; color: #666; margin-left: 6px; }
-.slider { width: 140px; }
-.wave { width: 100%; }
-.minimap { width: 100%; opacity: .85; }
+.wavecell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lbl {
+  font-size: 12px;
+  color: #666;
+  margin-left: 6px;
+}
+
+.slider {
+  width: 140px;
+}
+
+.wave {
+  width: 100%;
+}
+
+.minimap {
+  width: 100%;
+  opacity: .85;
+}
 </style>

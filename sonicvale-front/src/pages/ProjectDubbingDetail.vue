@@ -162,12 +162,28 @@
                                         <Headset />
                                     </el-icon> 批量生成音频
                                 </el-button>
+                                <el-button type="warning" @click="batchAddTailSilence" class="ml8">
+                                    <el-icon>
+                                        <Mute />
+                                    </el-icon>
+                                    批量添加间隔时间
+                                </el-button>
 
                                 <el-button type="success" @click="markAllAsCompleted">
                                     <el-icon>
                                         <Check />
                                     </el-icon> 导出配音与字幕
                                 </el-button>
+                                <el-button type="danger" @click="handleCorrectSubtitles">
+                                    <el-icon>
+                                        <Edit />
+                                    </el-icon>
+                                    矫正字幕
+                                </el-button>
+
+                                <el-switch v-model="playMode" active-text="顺序播放" inactive-text="单条播放"
+                                    active-value="sequential" inactive-value="single" />
+
 
                             </div>
 
@@ -287,9 +303,11 @@
                                         <div v-if="row.audio_path">
                                             <WaveCellPro :key="waveKey(row)" :src="waveSrc(row)"
                                                 :speed="row._procSpeed || 1.0" :volume2x="row._procVolume ?? 1.0"
-                                                :start-ms="row.start_ms" :end-ms="row.end_ms" @ready="registerWave"
+                                                :start-ms="row.start_ms" :end-ms="row.end_ms"
+                                                @ready="(p) => registerWave({ handle: p, id: row.id })"
                                                 @request-stop-others="stopOthers" @dispose="unregisterWave"
-                                                @confirm="(p) => confirmAndProcess(row, p)" />
+                                                @confirm="(p) => confirmAndProcess(row, p)"
+                                                @ended="(p) => handleEnded({ p, id: row.id })" />
 
                                         </div>
                                         <el-text v-else type="info">无音频</el-text>
@@ -594,29 +612,14 @@
         <el-dialog v-model="dialogSelectVoice.visible" title="选择音色" width="780px">
             <!-- 筛选区 -->
             <div class="filter-bar">
-  <el-select
-    ref="filterSelectRef"
-    v-model="filterTags"
-    multiple
-    filterable
-    clearable
-    collapse-tags
-    collapse-tags-tooltip
-    placeholder="按标签筛选"
-    class="filter-select"
-    @change="handleTagChange"
-  >
-    <el-option v-for="tag in allTags" :key="tag" :label="tag" :value="tag" />
-  </el-select>
+                <el-select ref="filterSelectRef" v-model="filterTags" multiple filterable clearable collapse-tags
+                    collapse-tags-tooltip placeholder="按标签筛选" class="filter-select" @change="handleTagChange">
+                    <el-option v-for="tag in allTags" :key="tag" :label="tag" :value="tag" />
+                </el-select>
 
-  <!-- 新增名字搜索框 -->
-  <el-input
-    v-model="searchName"
-    placeholder="搜索名字"
-    clearable
-    style="margin-left: 8px; width: 200px;"
-  />
-</div>
+                <!-- 新增名字搜索框 -->
+                <el-input v-model="searchName" placeholder="搜索名字" clearable style="margin-left: 8px; width: 200px;" />
+            </div>
 
 
             <!-- 音色卡片网格 -->
@@ -669,7 +672,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Lock, Unlock, ArrowLeft, Setting, Headset, Menu, Plus, Search, Edit, Delete, Refresh, MagicStick, Document, CaretBottom, CaretRight, Upload, VideoPlay, VideoPause, Check } from '@element-plus/icons-vue'
+import { Lock, Unlock, ArrowLeft, Setting, Headset, Menu, Plus, Search, Edit, Delete, Refresh, MagicStick, Document, CaretBottom, CaretRight, Upload, VideoPlay, VideoPause, Mute, Check } from '@element-plus/icons-vue'
 import service from '../api/config'
 import * as chapterAPI from '../api/chapter'
 import * as roleAPI from '../api/role'
@@ -730,10 +733,12 @@ function applyLineUpdate(msg) {
             status,                                  // 'pending' | 'processing' | 'done' | 'failed'
             audio_path: audio_path ?? old.audio_path // 若推送里没有就保留原值
         }
+        
         // ✅ 关键：当生成完成或路径发生变化时，强制重载对应 WaveCellPro
         if (status === 'done' || pathChanged) {
             bumpVer(line_id)           // 让 :key 与 :src?v= 都变
         }
+        
     } else {
         // 当前章节列表里没有该行（例如切换了章节），这里先忽略。
         // 需要的话也可以触发一次局部刷新：activeChapterId.value && loadLines()
@@ -787,8 +792,6 @@ function connectWS() {
                 return;
             }
             if (msg.event === 'line_update') {
-                applyLineUpdate(msg)
-
                 // 队列可视化
                 const type = msg.status === 'failed' ? 'danger'
                     : msg.status === 'processing' ? 'warning'
@@ -801,7 +804,13 @@ function connectWS() {
                         : msg.status === 'failed'
                             ? '生成失败'
                             : '状态更新')
+                // 同时弹出提示框
+                // console.log(`[${new Date().toLocaleTimeString()}] #${msg.line_id} ${meta}`)
                 addQueue({ title: `台词 #${msg.line_id}`, meta, type })
+                applyLineUpdate(msg)
+
+                
+                
             }
         } catch { /* 忽略解析错误 */ }
     }
@@ -1266,9 +1275,9 @@ async function generateOne(row) {
     if (res?.code === 200) {
         ElMessage.success('已添加到异步任务中')
         // 等待 WebSocket 推送来更新为 done/failed
-        row.status = 'processing'
+        // row.status = 'processing'
     } else {
-        row.status = 'failed'
+        // row.status = 'failed'
         addQueue({ title: `台词 #${row.id}`, meta: res?.message || '生成失败（请求失败）', type: 'danger' })
         ElMessage.error(res?.message || '生成失败')
     }
@@ -1945,8 +1954,26 @@ async function markAllAsCompleted() {
         loading.setText('正在导出音频与字幕（阶段 3/3）...')
 
         try {
-            // 如果你的后端一个接口同时导出音频和字幕
-            const expRes = await lineAPI.exportLines(activeChapterId.value)
+            let isExportSingleSubtitle = false
+            try {
+                await ElMessageBox.confirm(
+                    '是否额外导出所有的单条字幕？<br><span style="color:#999;">（额外导出会增加音频导出时间，推荐选择“否”）</span>',
+                    '导出设置',
+                    {
+                        dangerouslyUseHTMLString: true, // 允许用 HTML 格式
+                        confirmButtonText: '是',
+                        cancelButtonText: '否',
+                        type: 'info',
+                        cancelButtonClass: 'el-button--danger'    // 「否」= 蓝色重点按钮
+                    }
+                )
+                // 用户点击了“是”
+                isExportSingleSubtitle = true
+            } catch {
+                // 用户点击了“否” 或者关闭
+                isExportSingleSubtitle = false
+            }
+            const expRes = await lineAPI.exportLines(activeChapterId.value, isExportSingleSubtitle)
 
             // 如果你有单独的字幕导出接口，可按需增加：
             // const srtRes = (typeof lineAPI.exportSubtitles === 'function')
@@ -2034,27 +2061,32 @@ function waveSrc(row) {
 }
 
 // 全局单实例播放（同页只允许一条在播）
-const waveHandleSet = new Set()
-function registerWave(handle) {
-    console.log('registerWave', handle)
-    if (handle) waveHandleSet.add(handle)   // handle 需要有 pause()
-}
+// 从 Set 换成 Map
+const waveHandleMap = new Map()
 
-function unregisterWave(handle) {     // 新增
-    console.log('unregisterWave', handle)
-    if (handle && waveHandleSet.has(handle)) {
-        try { handle.pause && handle.pause() } catch { }
-        waveHandleSet.delete(handle)
+function registerWave({ handle, id }) {
+    if (handle && id) {
+        console.log('registerWave', id, handle)
+        waveHandleMap.set(id, handle)   // 直接覆盖
     }
 }
+
+function unregisterWave({ handle, id }) {
+    console.log('unregisterWave', id)
+    if (id && waveHandleMap.has(id)) {
+        try { waveHandleMap.get(id)?.pause?.() } catch { }
+        waveHandleMap.delete(id)
+    }
+}
+
 function stopOthers(exceptHandle) {
-    console.log('stopOthers', exceptHandle)
-    waveHandleSet.forEach(h => {
+    waveHandleMap.forEach((h, id) => {
         if (h && h !== exceptHandle) {
-            try { h.pause && h.pause() } catch { }
+            try { h.pause?.() } catch { }
         }
     })
 }
+
 
 // 确认后真正处理
 async function confirmAndProcess(row, payload) {
@@ -2064,6 +2096,7 @@ async function confirmAndProcess(row, payload) {
         volume: Number(payload.volume || row._procVolume || 1.0),
         start_ms: payload.start_ms ?? null,
         end_ms: payload.end_ms ?? null,
+        tail_silence_sec: Number(payload.tail_silence_sec || 0),
     }
     console.log('confirmAndProcess', row.id, body)
     const res = await lineAPI.processAudio(row.id, body)
@@ -2186,17 +2219,17 @@ const allTags = computed(() => {
 const searchName = ref('') // 新增
 
 const filteredVoices = computed(() => {
-  return voicesOptions.value.filter(v => {
-    // 先处理名字匹配
-    const matchName = !searchName.value || v.name.includes(searchName.value)
+    return voicesOptions.value.filter(v => {
+        // 先处理名字匹配
+        const matchName = !searchName.value || v.name.includes(searchName.value)
 
-    // 再处理标签匹配
-    if (!filterTags.value.length) return matchName
-    const tags = v.description ? v.description.split(',') : []
-    const matchTags = filterTags.value.every(ft => tags.includes(ft))
+        // 再处理标签匹配
+        if (!filterTags.value.length) return matchName
+        const tags = v.description ? v.description.split(',') : []
+        const matchTags = filterTags.value.every(ft => tags.includes(ft))
 
-    return matchName && matchTags
-  })
+        return matchName && matchTags
+    })
 })
 
 const filterSelectRef = ref(null)
@@ -2229,6 +2262,157 @@ function cellStyle({ row, column }) {
     }
 
     return {}
+}
+async function handleCorrectSubtitles() {
+    // 打开等待窗口
+    const loading = ElLoading.service({
+        lock: true,
+        text: '正在矫正字幕，请稍候...',
+        background: 'rgba(0, 0, 0, 0.5)'
+    })
+
+    try {
+        const res = await lineAPI.correctLines(activeChapterId.value)
+        if (res?.code !== 200) {
+            ElMessage.error(res?.message || '请先导出音频与字幕')
+        }
+        else {
+            ElMessage.success('字幕已矫正完成')
+            // —— 自动打开输出文件夹 —— //
+            // 若导出接口返回了目录，可优先打开导出目录；否则仍按原逻辑打开第一条音频所在目录
+            try {
+                const firstLineWithAudio = lines.value[0]
+                const folderPath = firstLineWithAudio ? getFolderFromPath(firstLineWithAudio.audio_path) : ''
+                if (native?.openFolder && folderPath) {
+                    native.openFolder(folderPath)
+                }
+            } catch { }
+        }
+        // TODO: 刷新数据
+    } catch (err) {
+        ElMessage.error('字幕矫正失败')
+    } finally {
+        // 关闭等待窗口
+        loading.close()
+    }
+}
+
+async function batchAddTailSilence() {
+    if (!lines.value.length) {
+        return ElMessage.info('当前无台词');
+    }
+
+    try {
+        const { value } = await ElMessageBox.prompt(
+            '请输入末尾静音时长（秒）(建议不要超过0.6秒)（可为负数，负数表示裁剪）',
+            '批量处理间隔时间',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                // 支持整数、小数、负数
+                inputPattern: /^-?\d+(\.\d+)?$/,
+                inputErrorMessage: '请输入合法数字（可为负数）',
+            }
+        );
+        const tailSec = Number(value);
+
+        const loading = ElLoading.service({
+            lock: true,
+            text: '正在批量处理音频...',
+            background: 'rgba(0,0,0,0.3)',
+        });
+
+        let ok = 0, fail = 0, skip = 0;
+
+        for (const row of lines.value) {
+            if (!row.audio_path) {
+                skip++;
+                continue;
+            }
+            try {
+                const res = await lineAPI.processAudio(row.id, {
+                    speed: row._procSpeed || 1.0,
+                    volume: row._procVolume || 1.0,
+                    start_ms: null,
+                    end_ms: null,
+                    tail_silence_sec: tailSec, // 可正可负
+                });
+                if (res?.code === 200) {
+                    bumpVer(row.id); // 强制刷新 WaveCellPro
+                    ok++;
+                } else {
+                    fail++;
+                }
+            } catch {
+                fail++;
+            }
+        }
+
+        loading.close();
+        ElMessage.success(`批量完成：成功 ${ok} 条，跳过 ${skip} 条，失败 ${fail} 条`);
+    } catch {
+        // 用户取消输入
+    }
+}
+// const playMode = ref('sequential') // 'single' = 单条, 'sequential' = 顺序
+const playMode = ref(localStorage.getItem('playMode') || 'sequential')
+
+// 监听 playMode 变化并存储到本地
+watch(playMode, (val) => {
+    localStorage.setItem('playMode', val)
+})
+// 处理 ended 事件
+function handleEnded({ handle, id }) {
+    console.log('handleEnded', id, playMode.value)
+    if (playMode.value !== 'sequential') return
+
+    // 拿到当前行列表（确保按 line_order 排序）
+    const list = [...displayedLines.value].sort((a, b) => a.line_order - b.line_order)
+    const idx = list.findIndex(l => l.id === id)
+    console.log('当前行索引', idx, '，总行数', list.length)
+    if (idx === -1 || idx === list.length - 1) return // 找不到或最后一条
+
+    if (idx === -1) {
+        console.warn('handleEnded: 未找到当前行，终止顺序播放')
+        return
+    }
+    if (idx === list.length - 1) {
+        console.log('handleEnded: 已是最后一行，顺序播放结束')
+        return
+    }
+
+    // 向后查找下一个有音频的行
+    let nextRow = null
+    for (let i = idx + 1; i < list.length; i++) {
+        if (list[i].audio_path) {
+            nextRow = list[i]
+            break
+        }
+    }
+
+    if (!nextRow) {
+        console.log('handleEnded: 后续没有可播放的音频，顺序播放结束')
+        return
+    }
+
+    // 找到下一行对应的 WaveCellPro 实例
+    console.log('下一行 ID:', nextRow.id)
+
+
+    const nextHandle = waveHandleMap.get(nextRow.id)
+
+    if (!nextHandle) {
+        console.warn('handleEnded: 未找到下一行的 WaveCellPro 实例，行ID:', nextRow.id)
+        return
+    }
+
+    if (nextHandle?.play) {
+        console.log('handleEnded: 播放下一行 => ID:', nextRow.id)
+        stopOthers(nextHandle) // 停止其他行
+        nextHandle.play()
+    } else {
+        console.warn('handleEnded: 下一行实例没有 play 方法 => ID:', nextRow.id)
+    }
 }
 
 </script>
