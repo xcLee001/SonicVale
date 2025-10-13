@@ -1,4 +1,3 @@
-
 const logger = require('./logger');
 const { decodeText } = require('./logger');
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron')
@@ -8,26 +7,46 @@ const { spawn, exec } = require('child_process')
 const os = require('os')
 const http = require('http')
 
-
-
-
 let backendProcess = null
+let mainWindow = null
 
 function startBackend() {
   const isDev = !app.isPackaged
-  const exePath = isDev
-    ? path.join(__dirname, 'main.exe') // dev 环境路径
-    : path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', 'main.exe') // prod 路径
 
-  console.log('启动后端：', exePath)
+  // 在开发模式下，不启动后端进程
+  if (isDev) {
+    console.log('开发模式：跳过后端启动');
+    return;
+  }
+
+  const exeName = process.platform === 'win32' ? 'main.exe' : 'main';
+  const exePath = path.join(process.resourcesPath, 'app.asar.unpacked', 'electron', exeName);
+
+  console.log('启动后端：', exePath);
+
+  // 检查文件是否存在
+  if (!fs.existsSync(exePath)) {
+    console.error(`错误：可执行文件不存在于 ${exePath}`);
+    throw new Error(`可执行文件不存在: ${exePath}`);
+  }
+
+  // 在非 Windows 系统上设置执行权限
+  if (process.platform !== 'win32') {
+    try {
+      fs.chmodSync(exePath, 0o755); // 添加执行权限
+      console.log('已为可执行文件设置执行权限');
+    } catch (err) {
+      console.warn(`无法设置执行权限: ${err.message}`);
+    }
+  }
 
   backendProcess = spawn(exePath, [], {
     cwd: path.dirname(exePath),
-    detached: true,  // ❗关闭主进程时能跟着退出
-    stdio: ['ignore', 'pipe', 'pipe'], // 输出日志供调试
+    detached: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  // 日志输出（可选）
+  // 日志输出
   backendProcess.stdout.on('data', data => {
     console.log(`[后端] ${decodeText(data)}`);
   });
@@ -58,64 +77,94 @@ function waitForBackendReady(retries = 60, delay = 500) {
 }
 
 function createWindow() {
-  const win = new BrowserWindow({
+  const isDev = !app.isPackaged
 
+  mainWindow = new BrowserWindow({
     width: 1500,
     height: 800,
-    icon: path.join(__dirname, '../resource/icon/yingu.ico'),
-
+    icon: path.join(__dirname, '../resource/icon/yingu.icns'), // 使用 macOS 图标格式
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
       webSecurity: false,
+      allowRunningInsecureContent: true, // 允许运行不安全内容
     },
-    autoHideMenuBar: true, // 这会让菜单栏自动隐藏，但通过 Alt 可以唤出
+    autoHideMenuBar: true,
+    show: false, // 初始不显示，等待内容加载完成
   })
 
-  const isDev = !app.isPackaged
+  // 添加窗口事件监听
+  mainWindow.once('ready-to-show', () => {
+    console.log('窗口准备就绪，显示窗口');
+    mainWindow.show();
+
+    // 开发模式下自动打开开发者工具
+    if (isDev) {
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
   if (isDev) {
     // 开发环境：直连 Vite
-    win.loadURL('http://localhost:5173')
-    // win.webContents.openDevTools({ mode: 'detach' })
+    console.log('加载开发服务器: http://localhost:5173');
+    mainWindow.loadURL('http://localhost:5173')
+        .then(() => console.log('页面加载成功'))
+        .catch(err => console.error('页面加载失败:', err));
   } else {
-    // 生产环境：直接加载打包后的静态文件，不阻塞首屏
-    win.loadFile(path.join(__dirname, '../dist/index.html'))
-
-    // 非阻塞地检测后端是否就绪，用于日志/提示
-    waitForBackendReady()
-      .then(() => console.log('后端就绪'))
-      .catch(e => {
-        console.error('后端未就绪:', e)
-        // 可选：给用户一个友好提示页（不想覆盖 UI 就注释掉下面两行）
-        mainWindow.loadURL('data:text/html,<h1 style="font-family:sans-serif">backend is not ready</h1><p>please restart now</p>')
-      })
+    // 生产环境：加载打包后的静态文件
+    console.log('加载生产文件');
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+        .then(() => console.log('生产文件加载成功'))
+        .catch(err => console.error('生产文件加载失败:', err));
   }
 }
 
 // ============== 事件入口 ===============
 
 app.whenReady().then(async () => {
-  startBackend()
-  try {
-    await waitForBackendReady()
-    createWindow()
-  } catch (err) {
-    console.error('后端启动失败:', err)
-    const errorWin = new BrowserWindow({ width: 600, height: 300 })
-    errorWin.loadURL(`data:text/html;charset=utf-8,
-  <!DOCTYPE html>
-  <html>
-    <head><meta charset="UTF-8"></head>
-    <body>
-      <h2 style="font-family:sans-serif">后端启动失败</h2>
-      <p>请检查后端程序并重启应用</p>
-    </body>
-  </html>
-`);
+  console.log('Electron 应用准备就绪');
+
+  const isDev = !app.isPackaged
+
+  if (isDev) {
+    // 开发模式：直接创建窗口，不等待后端
+    console.log('开发模式：直接创建窗口');
+    createWindow();
+  } else {
+    // 生产模式：启动后端并等待
+    try {
+      startBackend();
+      await waitForBackendReady();
+      createWindow();
+    } catch (err) {
+      console.error('后端启动失败:', err);
+      const errorWin = new BrowserWindow({ width: 600, height: 300 });
+      errorWin.loadURL(`data:text/html;charset=utf-8,
+        <!DOCTYPE html>
+        <html>
+          <head><meta charset="UTF-8"></head>
+          <body>
+            <h2 style="font-family:sans-serif">后端启动失败</h2>
+            <p>请检查后端程序并重启应用</p>
+          </body>
+        </html>
+      `);
+    }
   }
 })
+
+app.on('activate', () => {
+  // 在 macOS 上，当点击 dock 图标时，如果没有打开的窗口，则重新创建一个
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
 
 // 杀死后端
 function killBackendTree(child) {
@@ -139,11 +188,15 @@ function killBackendTree(child) {
       // 可能已退出
     }
   }
+}
 
-}
 function shutdown() {
-  killBackendTree(backendProcess)
+  const isDev = !app.isPackaged
+  if (!isDev && backendProcess) {
+    killBackendTree(backendProcess)
+  }
 }
+
 app.on('before-quit', shutdown)
 app.on('will-quit', shutdown)
 app.on('quit', shutdown)
@@ -157,7 +210,6 @@ app.on('window-all-closed', () => {
 process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 process.on('exit', shutdown)
-
 
 // ============== IPC 处理 ===============
 // 选择参考音频
@@ -219,5 +271,3 @@ ipcMain.handle('select-voice-folder', async () => {
 
   return resultList
 })
-
-
