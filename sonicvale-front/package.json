@@ -1,5 +1,6 @@
 {
   "name": "sonicvale",
+  "description": "音谷音乐播放器",
   "productName": "音谷",
   "version": "1.0.5",
   "author": "lxc",
@@ -8,9 +9,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron": "electron .",
+    "electron": "npx electron .",
+    "electron:dev": "NODE_ENV=development npx electron .",
     "start": "concurrently \"npm run dev\" \"npm run electron\"",
-    "electron-build": "vite build && electron-builder"
+    "electron-build": "vite build && electron-builder",
+    "build:mac": "vite build && electron-builder --mac --arm64"
   },
   "build": {
     "appId": "com.example.yingu",
@@ -20,15 +23,27 @@
       "output": "release"
     },
     "files": [
-      "**/*"
+      "dist/**/*",
+      "electron/**/*",
+      "!**/node_modules/**/*",
+      "!release/**/*",
+      "!.git/**/*"
     ],
     "asar": true,
     "asarUnpack": [
-      "electron/**/*.exe"
+      "electron/**/*"
     ],
     "win": {
       "icon": "resource/icon/yingu.ico",
       "target": "nsis"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "resource/icon/yingu.icns",
+      "category": "public.app-category.music"
     },
     "nsis": {
       "oneClick": false,
@@ -59,6 +74,7 @@
     "concurrently": "^9.2.0",
     "electron": "^37.3.1",
     "electron-builder": "^26.0.12",
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "wait-on": "^7.2.0"
   }
 }
