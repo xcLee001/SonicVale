@@ -46,3 +46,8 @@ export function updateProject(projectId, data) {
   console.log('updateProject', projectId, data)
   return request.put(`/projects/${projectId}`, data)
 }
+
+// 批量导入章节
+export function importChapters(projectId, data) {
+  return request.post(`/projects/${projectId}/import`,  data )
+}

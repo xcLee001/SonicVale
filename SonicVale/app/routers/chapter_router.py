@@ -4,13 +4,13 @@ import io
 import json
 import logging
 import traceback
-from concurrent.futures import ThreadPoolExecutor
+
 from typing import List
 
-from rich.emoji import NoEmoji
+
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Form
-from starlette.responses import StreamingResponse
+
 
 from app.core.response import Res
 from app.core.ws_manager import manager
@@ -184,7 +184,8 @@ async def get_lines(
     if chapter.text_content is None:
         return Res(data=None, code=400, message="章节内容不存在")
     try:
-        contents = chapter_service.split_text(chapter_id, 800)
+        contents = chapter_service.split_text(chapter_id, 1500)
+        print("内容划分为", len(contents), "段")
     except Exception as e:
         logging.error(f"章节拆分失败: {e}\n{traceback.format_exc()}")
         return Res(data=None, code=500, message="章节拆分失败")
@@ -334,3 +335,4 @@ async def import_lines(project_id: int,chapter_id: int,data:str=Form( ...),line_
 # @router.get("/export-audio/{project_id}/{chapter_id}",response_model=Res[str],summary="合并结果并导出",description="合并结果并导出")
 # async def export_audio(project_id: int,chapter_id: int, chapter_service: ChapterService = Depends(get_chapter_service))
 #     res = chapter_service.export_audio(project_id,chapter_id)
+

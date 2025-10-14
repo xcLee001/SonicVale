@@ -22,3 +22,8 @@ class ProjectResponseDTO(BaseModel):
     prompt_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+
+
+class ProjectImportDTO(BaseModel):
+    id : int
+    content: str

@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.config import getConfigPath
 from app.core.response import Res
 from app.db.database import get_db
-from app.dto.project_dto import ProjectCreateDTO, ProjectResponseDTO
+from app.dto.project_dto import ProjectCreateDTO, ProjectResponseDTO, ProjectImportDTO
+from app.entity.chapter_entity import ChapterEntity
 from app.entity.project_entity import ProjectEntity
 from app.models.po import ChapterPO
 from app.repositories.chapter_repository import ChapterRepository
@@ -132,3 +133,26 @@ def delete_project(project_id: int, service: ProjectService = Depends(get_servic
         return Res(data=None, code=200, message="删除成功")
     else:
         return Res(data=None, code=400, message="删除失败或项目不存在")
+
+# 直接导入整本小说内容，然后解析，创建章节
+@router.post("/{project_id}/import")
+def import_project(project_id: int, dto: ProjectImportDTO,service: ProjectService = Depends(get_service),
+                   chapter_service: ChapterService = Depends(get_chapter_service)):
+
+    content = dto.content
+    # 删除该项目下的所有章节
+    # chapters = chapter_service.get_all_chapters(project_id)
+    # for chapter in chapters:
+    #     chapter_service.delete_chapter(chapter.id)
+    # 解析content
+    chapter_contents = service.parse_content(content)
+    if len(chapter_contents) == 0:
+        return Res(code=400, message="导入失败")
+
+    # 批量创建章节
+    for chapter_content in chapter_contents:
+        name = chapter_content["chapter_name"]
+        content = chapter_content["content"]
+        print("批量创建章节", name)
+        chapter_service.create_chapter(ChapterEntity(project_id=project_id, title=name, text_content=content))
+    return Res(code=200, message="导入成功")

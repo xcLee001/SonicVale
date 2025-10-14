@@ -12,40 +12,40 @@
     <!-- 公告栏 -->
 
     <!-- 公告按钮 -->
-<el-button
-  type="danger"
-  plain
-  round right
-  @click="noticeVisible = true"
->
-  <el-icon style="margin-right: 6px;">
-    <WarningFilled />
-  </el-icon>
-  提示词说明
-</el-button>
+    <el-button type="danger" plain round right @click="noticeVisible = true">
+      <el-icon style="margin-right: 6px;">
+        <WarningFilled />
+      </el-icon>
+      提示词说明
+    </el-button>
 
 
-   <!-- 公告弹框 -->
-<el-dialog v-model="noticeVisible" title="📢 提示词必备格式说明" width="750px">
-  <div class="notice-content">
-    <p>⚠️ 创建提示词时，必须遵守以下规则，否则会创建失败：</p>
+    <!-- 公告弹框 -->
+    <el-dialog v-model="noticeVisible" title="📢 提示词必备格式说明" width="750px">
+      <div class="notice-content">
+        <p>⚠️ 创建提示词时，必须遵守以下规则，否则会创建失败：</p>
 
-    <p>
-      ✅ 必须包含 <strong>小说原文</strong>：
-      <code>
+        <p>
+          ✅ 必须包含 <strong>小说原文</strong>：
+          <code>
 &lt;novel_content&gt;<br />
 {novel_content}<br />
 &lt;/novel_content&gt;
       </code>
-    </p>
+        </p>
 
-    <p>
-      ✅ 输出必须严格包裹在 <strong>&lt;result&gt;</strong> 标签内。
-    </p>
+        <p style="color: #e53935; font-weight: bold;">
+  ⚠️ 注意：<strong>输出必须严格为 JSON 格式！</strong><br>
+  <span style="color: #999; font-weight: normal;">
+    （不再使用 <code>&lt;result&gt;</code> 标签格式）
+  </span>
+</p>
 
-    <p>
-      ✅ <strong>输出 JSON 数组</strong> 中的每个对象必须包含以下四个参数：  
-      <code>
+
+
+        <p>
+          ✅ <strong>输出 JSON 数组</strong> 中的每个对象必须包含以下四个参数：
+          <code>
 {<br />
 &nbsp;&nbsp;"role_name" ,<br />
 &nbsp;&nbsp;"text_content" <br />
@@ -53,41 +53,41 @@
 &nbsp;&nbsp;"strength_name"<br />
 }
       </code>
-    </p>
+        </p>
 
-    <p>
-      ➕ 以下标签为 <strong>可选</strong>（根据需要添加，不需要可省略）：  
-    </p>
+        <p>
+          ➕ 以下标签为 <strong>可选</strong>（根据需要添加，不需要可省略）：
+        </p>
 
-    <p>
-      <code>
+        <p>
+          <code>
 &lt;possible_characters&gt;<br />
 {possible_characters}<br />
 &lt;/possible_characters&gt;
       </code>
-    </p>
+        </p>
 
-    <p>
-      <code>
+        <p>
+          <code>
 &lt;possible_emotions&gt;<br />
 {possible_emotions}<br />
 &lt;/possible_emotions&gt;
       </code>
-    </p>
+        </p>
 
-    <p>
-      <code>
+        <p>
+          <code>
 &lt;possible_strengths&gt;<br />
 {possible_strengths}<br />
 &lt;/possible_strengths&gt;
       </code>
-    </p>
-  </div>
+        </p>
+      </div>
 
-  <template #footer>
-    <el-button type="primary" @click="noticeVisible = false">我已了解</el-button>
-  </template>
-</el-dialog>
+      <template #footer>
+        <el-button type="primary" @click="noticeVisible = false">我已了解</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 提示词卡片网格 -->
     <el-row :gutter="20">
@@ -157,7 +157,7 @@
 <script setup>
 import { ref, onMounted } from "vue"
 import { ElMessage, ElMessageBox } from "element-plus"
-import { Edit, Delete ,QuestionFilled} from "@element-plus/icons-vue"
+import { Edit, Delete, QuestionFilled } from "@element-plus/icons-vue"
 import { WarningFilled } from "@element-plus/icons-vue"
 
 import {
@@ -356,18 +356,21 @@ function removePrompt(row) {
 }
 
 .el-button.is-plain.el-button--danger {
-  border: 1px solid #f56c6c;   /* 红色边框 */
-  color: #f56c6c;              /* 红色文字 */
-  background: #fef0f0;         /* 淡红背景 */
+  border: 1px solid #f56c6c;
+  /* 红色边框 */
+  color: #f56c6c;
+  /* 红色文字 */
+  background: #fef0f0;
+  /* 淡红背景 */
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .el-button.is-plain.el-button--danger:hover {
-  background: #f56c6c;  /* 红底 */
-  color: #fff;          /* 白字 */
+  background: #f56c6c;
+  /* 红底 */
+  color: #fff;
+  /* 白字 */
   box-shadow: 0 2px 8px rgba(245, 108, 108, 0.3);
 }
-
-
 </style>

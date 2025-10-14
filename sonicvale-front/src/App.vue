@@ -36,6 +36,33 @@
         </el-menu-item>
       </el-menu>
 
+      <!-- ✅ 新增底部信息 -->
+      <!-- 底部信息（版本/免费/联系方式） -->
+      <!-- 警告： -->
+      <!--
+  ================================================================
+  🎙️ 音之谷配音平台
+  作者：音之谷 Studio
+  QQ：1428390267
+  本软件完全免费
+  ================================================================
+-->
+
+      <div class="sider-info" v-if="!collapsed">
+        <div class="info-item">版本：v1.0.6</div>
+        <div class="info-item">联系QQ：1428390267</div>
+        <!-- 🔔 醒目声明 -->
+        <div class="info-warning">
+          
+            本软件完全免费，遵循 AGPLv3 开源协议。
+       
+            禁止倒卖，违者必究。 
+          
+        </div>
+      </div>
+
+
+
       <!-- 底部收缩/展开按钮 -->
       <div class="sider-footer">
         <el-tooltip :content="collapsed ? '展开菜单' : '收起菜单'" placement="right">
@@ -67,7 +94,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Folder, Setting, Microphone, Fold, Expand,Document  } from '@element-plus/icons-vue'
+import { Folder, Setting, Microphone, Fold, Expand, Document } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeMenu = ref(route.path)
@@ -228,5 +255,58 @@ body,
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+
+/* 底部信息块 */
+/* 底部信息块整体 */
+.sider-info {
+  flex: 0 0 auto;
+  padding: 12px 14px 14px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  line-height: 1.6;
+  background: rgba(255, 255, 255, 0.02);
+  color: #c9d4e0;
+}
+
+/* 普通信息行（版本、联系方式） */
+.info-item {
+  color: #aeb8c5;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.info-item:first-child {
+  font-weight: 600;
+  color: #d6dee8;
+}
+
+/* 让QQ号可选中复制 */
+.info-item::selection {
+  background: #409eff;
+  color: #fff;
+}
+
+
+
+.info-warning {
+  margin-top: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #ffb84d;
+  background: rgba(255, 184, 77, 0.1);
+  border: 1px solid rgba(255, 184, 77, 0.25);
+  border-radius: 6px;
+  line-height: 1.5;
+  text-align: justify;
+  transition: all 0.3s ease;
+}
+
+.info-warning:hover {
+  background: rgba(255, 184, 77, 0.2);
+  color: #ffd27f;
 }
 </style>

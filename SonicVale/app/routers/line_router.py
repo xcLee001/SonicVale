@@ -175,12 +175,22 @@ def update_line_audio_path(
 
 
 @router.post("/generate-audio/{project_id}/{chapter_id}")
-async def generate_audio(request: Request, project_id: int, chapter_id: int, dto: LineCreateDTO):
+def generate_audio(request: Request, project_id: int, dto: LineCreateDTO,line_service: LineService = Depends(get_line_service)):
     q = request.app.state.tts_queue  # 👈 永远拿到已初始化的同一份队列
     if q.full():
         # 可选：带上 Retry-After 头
         raise HTTPException(status_code=429, detail="队列已满，请稍后重试")
     q.put_nowait((project_id, dto))
+    #
+    line_service.update_line(dto.id, {"status": "processing"})
+    # manager.broadcast({
+    #     "event": "line_update",
+    #     "line_id": dto.id,
+    #     "status": "processing",
+    #     "progress":  q.qsize(),
+    #     "meta": f"角色 {dto.role_id} 开始生成"
+    # })
+    print("队列剩余数量:", q.qsize())
     return {"code": 200, "message": "已入队", "data": {"line_id": dto.id}}
 
 
@@ -290,8 +300,34 @@ async def export_audio(chapter_id: int,
 # 矫正字幕
 @router.post("/correct-subtitle/{chapter_id}")
 async def correct_subtitle(chapter_id: int, line_service: LineService = Depends(get_line_service)):
-    res = line_service.correct_subtitle(chapter_id)
-    if res is False:
+    # res = line_service.correct_subtitle(chapter_id)
+
+    lines = line_service.get_all_lines(chapter_id)
+    if not lines:
+        print("无台词记录")
+        return Res(data=None, code=400, message="无台词记录")
+    paths = [line.audio_path for line in lines]
+    if not paths or not paths[0]:
+        print("未找到有效音频路径")
+        return Res(data=None, code=400, message="未找到有效音频路径")
+    # 读取所有台词，组成一个文本
+    text = "\n".join([line.text_content for line in lines])
+    output_dir_path = os.path.join(os.path.dirname(paths[0]), "result")
+    output_subtitle_path = os.path.join(output_dir_path, "result.srt")
+    if os.path.exists(output_subtitle_path):
+        line_service.correct_subtitle(text, output_subtitle_path)
+        print("整体字幕矫正完成")
+    else:
+        print("请先导出音频")
         return Res(data=None, code=400, message="请先导出音频")
-    return Res(data=res, code=200, message="生成成功")
+
+    #         将单条字幕也进行矫正
+    print("开始对单条字幕进行矫正")
+    for line in lines:
+        subtitle_path = line.subtitle_path
+        line_text = line.text_content
+        if subtitle_path is not None and line_text is not None and os.path.exists(subtitle_path):
+            line_service.correct_subtitle(line_text, subtitle_path)
+            print(f"单条字幕矫正完成：{line.id}")
+    return Res(data=None, code=200, message="生成成功")
 

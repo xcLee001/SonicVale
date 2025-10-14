@@ -13,6 +13,7 @@ from openpyxl import Workbook
 from sqlalchemy import Sequence
 
 
+from app.core.audio_engin import AudioProcessor
 from app.core.config import getConfigPath, getFfmpegPath
 from app.core.subtitle import subtitle_engine
 from app.core.tts_engine import TTSEngine
@@ -276,7 +277,7 @@ class LineService:
             volume: float = 1.0,
             start_ms: int | None = None,
             end_ms: int | None = None,
-            tail_silence_sec: float = 0.0,  # 末尾静音时长，单位秒
+            silence_sec: float = 0.0,  # 末尾静音时长，单位秒
             out_path: str | None = None,
             keep_format: bool = True,  # 是否保持原文件采样率/声道
             default_sr: int = 44100,
@@ -286,7 +287,7 @@ class LineService:
         使用 ffmpeg 对音频进行变速 (0.5~2.0)、音量调整。
         删除 [start_ms, end_ms] 区间，并拼接前后音频。
         输出 WAV PCM16。
-        可在末尾附加 tail_silence_sec 秒静音。
+        可在末尾附加 silence_sec 秒静音。
         """
         ffmpeg_path = getFfmpegPath()
         if not os.path.exists(audio_path):
@@ -311,12 +312,12 @@ class LineService:
         # 构建 ffmpeg 命令
         if start_ms is None or end_ms is None or end_ms <= start_ms:
             # 无剪切
-            if tail_silence_sec > 0:
+            if silence_sec > 0:
                 # 添加静音
                 cmd = [
                     ffmpeg_path, "-y",
                     "-i", audio_path,
-                    "-f", "lavfi", "-t", str(tail_silence_sec),
+                    "-f", "lavfi", "-t", str(silence_sec),
                     "-i", f"anullsrc=channel_layout={'stereo' if target_ch == 2 else 'mono'}:sample_rate={target_sr}",
                     "-filter_complex",
                     f"[0:a]atempo={speed},volume={volume}[main];"
@@ -327,9 +328,9 @@ class LineService:
                     "-c:a", "pcm_s16le",
                     tmp_path
                 ]
-            elif tail_silence_sec < 0:
-                # 裁掉末尾 abs(tail_silence_sec)
-                cut_dur = info.duration + tail_silence_sec
+            elif silence_sec < 0:
+                # 裁掉末尾 abs(silence_sec)
+                cut_dur = info.duration + silence_sec
                 if cut_dur <= 0:
                     cut_dur = 0  # 整段裁掉
 
@@ -364,7 +365,7 @@ class LineService:
 
             end_sec = end_ms / 1000
 
-            if tail_silence_sec > 0:
+            if silence_sec > 0:
 
                 # 拼接 + 添加静音
 
@@ -374,7 +375,7 @@ class LineService:
 
                     "-i", audio_path,
 
-                    "-f", "lavfi", "-t", str(tail_silence_sec),
+                    "-f", "lavfi", "-t", str(silence_sec),
 
                     "-i", f"anullsrc=channel_layout={'stereo' if target_ch == 2 else 'mono'}:sample_rate={target_sr}",
 
@@ -400,11 +401,11 @@ class LineService:
 
                 ]
 
-            elif tail_silence_sec < 0:
+            elif silence_sec < 0:
 
                 # 拼接后再裁掉末尾
 
-                cut_dur = info.duration + tail_silence_sec
+                cut_dur = info.duration + silence_sec
                 if cut_dur <= 0:
                     cut_dur = 0  # 整段裁掉
 
@@ -482,7 +483,35 @@ class LineService:
         #     读取音频文件
         #     audio_file =self.process_audio_ffmpeg(line.audio_path, dto.speed, dto.volume,dto.start_ms,dto.end_ms)
         # 删除拼接
-            audio_file = self.process_audio_ffmpeg_cut(line.audio_path, dto.speed, dto.volume, dto.start_ms, dto.end_ms, dto.tail_silence_sec)
+        #     audio_file = self.process_audio_ffmpeg_cut(line.audio_path, dto.speed, dto.volume, dto.start_ms, dto.end_ms, dto.tail_silence_sec,dto.current_ms)
+            processor = AudioProcessor(line.audio_path)
+            start_ms = dto.start_ms
+            end_ms = dto.end_ms
+            speed = dto.speed
+            volume = dto.volume
+            current_ms = dto.current_ms
+            silence_sec = dto.silence_sec
+            # ---------- (1) 优先裁剪 ----------
+            if start_ms is not None and end_ms is not None and end_ms > start_ms:
+                print("裁剪")
+                processor.cut(start_ms, end_ms)
+
+            # ---------- (2) 插入静音 ----------
+            elif current_ms is not None and silence_sec is not None and silence_sec != 0:
+                print("插入静音")
+                processor.insert_silence(current_ms, silence_sec)
+
+            # ---------- (3) 末尾静音/裁剪 ----------
+            elif current_ms is None and silence_sec is not None and silence_sec != 0:
+                print("末尾静音/裁剪")
+                processor.append_silence(silence_sec)
+
+            # ---------- (4) 音量 + 变速 ----------
+            if speed != 1.0:
+                processor.change_speed(speed)
+            if volume != 1.0:
+                processor.change_volume(volume)
+            print("音频处理完成")
             return True
 
         else:
@@ -600,29 +629,8 @@ class LineService:
         else:
             return None
 #     字幕矫正
-    def correct_subtitle(self, chapter_id):
-        lines = self.repository.get_all(chapter_id)
-        paths = [line.audio_path for line in lines]
-        # 读取所有台词，组成一个文本
-        text = "\n".join([line.text_content for line in lines])
-        output_dir_path = os.path.join(os.path.dirname(paths[0]), "result")
-        output_subtitle_path = os.path.join(output_dir_path, "result.srt")
-        if os.path.exists(output_subtitle_path):
-            subtitle_engine.correct_srt_file(text,output_subtitle_path)
-            print("整体字幕矫正完成")
-        else:
-            print("请先导出音频")
-            return False
-
-#         将单条字幕也进行矫正
-        for line in lines:
-            subtitle_path = line.subtitle_path
-            line_text = line.text_content
-            if os.path.exists(subtitle_path):
-                subtitle_engine.correct_srt_file(line_text,subtitle_path)
-                print(f"单条字幕矫正完成：{line.id}")
-
-        return  True
+    def correct_subtitle(self, text, output_subtitle_path):
+        subtitle_engine.correct_srt_file(text, output_subtitle_path)
 
 #     生成字幕
 #     def generate_subtitle(self, res_path):

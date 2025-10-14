@@ -7,8 +7,8 @@ import uvicorn
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from starlette.middleware.cors import CORSMiddleware
-from starlette.websockets import WebSocket
 
+from app.core.prompts import get_prompt_str
 from app.core.tts_runtime import tts_worker
 from app.core.ws_manager import manager
 from app.db.database import Base, engine, SessionLocal, get_db
@@ -78,6 +78,17 @@ def add_prompt_id_column():
             conn.execute(text("ALTER TABLE projects ADD COLUMN prompt_id INTEGER"))
             conn.commit()
 
+# 添加line表中is_done字段
+def add_is_done_column():
+    with engine.connect() as conn:
+        result = conn.execute(text("PRAGMA table_info(lines)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "is_done" not in columns:
+            # ✅ 添加列并设置默认值 0
+            conn.execute(text("ALTER TABLE lines ADD COLUMN is_done INTEGER DEFAULT 0"))
+            conn.commit()
+
+
 
 def get_tts_service(db: Session = Depends(get_db)) -> TTSProviderService:
     return TTSProviderService(TTSProviderRepository(db))
@@ -92,7 +103,8 @@ async def startup_event():
 
     # 更改数据库表字段
     add_prompt_id_column()
-
+    # v1.0.6添加字段 is_done
+    add_is_done_column()
 
     # 2) 初始化共享运行时
     try:
@@ -144,6 +156,16 @@ async def startup_event():
             if not prompt_service.get_all_prompts():
                 print("创建默认提示词")
                 prompt_service.create_default_prompt()
+            else:
+                default_prompt =  prompt_service.get_prompt_by_name("默认拆分台词提示词")
+                if not default_prompt:
+                    prompt_service.create_default_prompt()
+                else:
+                    #修改默认提示词
+                    default_prompt_content = get_prompt_str()
+                    default_prompt.content = default_prompt_content
+                    prompt_service.update_prompt(default_prompt.id, default_prompt.__dict__)
+
         except Exception as e:
             logging.warning("⚠️ 默认提示词创建失败: %s", e)
 
@@ -234,7 +256,7 @@ async def ws_endpoint(ws: WebSocket):
                 continue
 
             # 这里可以扩展处理订阅/其他消息
-            # ...
+
     except:
         manager.disconnect(ws)
 

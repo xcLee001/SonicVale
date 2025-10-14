@@ -189,12 +189,14 @@ function clearRegion() {
 async function confirmProcess() {
   const start_ms = region.value ? Math.round(region.value.start * 1000) : null
   const end_ms = region.value ? Math.round(region.value.end * 1000) : null
+  const current_ms = ws ? Math.round(ws.getCurrentTime() * 1000) : 0  // ✅ 新增
   await ElMessageBox.confirm('确认按当前试听参数处理该音频吗？（会生成新文件或覆盖，视后端实现）', '确认处理', { type: 'warning' })
   emit('confirm', {
     speed: Number(rate.value || 1.0),
     volume: Number(vol2x.value || 1.0),
     start_ms, end_ms,
-    tail_silence_sec: Number(tailSilence.value || 0),
+    silence_sec: Number(tailSilence.value || 0),
+    current_ms,
   })
 }
 </script>

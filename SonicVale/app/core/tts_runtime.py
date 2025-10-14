@@ -46,12 +46,13 @@ async def tts_worker(app: FastAPI):
             emotion_service = get_emotion_service(db)
             strength_service = get_strength_service(db)
 
-            line_service.update_line(dto.id, {"status": "processing"})
+
+            # line_service.update_line(dto.id, {"status": "processing"})
             await manager.broadcast({
                 "event": "line_update",
                 "line_id": dto.id,
                 "status": "processing",
-                "progress": 0,
+                "progress": q.qsize(),
                 "meta": f"角色 {dto.role_id} 开始生成"
             })
 
@@ -98,10 +99,17 @@ async def tts_worker(app: FastAPI):
                 "event": "line_update",
                 "line_id": dto.id,
                 "status": "done",
-                "progress": 100,
+                "progress":  q.qsize(),
                 "meta": "生成完成",
                 "audio_path": dto.audio_path
             })
+            # 发送给前端，队列中剩余的数量
+            await manager.broadcast({
+                "event": "tts_queue_rest",
+                "queue_rest": q.qsize(),
+                "project_id": project_id
+            })
+
         except Exception as e:
             try:
                 line_service.update_line(dto.id, {"status": "failed"})
@@ -111,9 +119,11 @@ async def tts_worker(app: FastAPI):
                 "event": "line_update",
                 "line_id": dto.id,
                 "status": "failed",
-                "progress": 0,
+                "progress":  q.qsize(),
                 "meta": f"失败: {e}"
             })
+
         finally:
+
             db.close()
             q.task_done()

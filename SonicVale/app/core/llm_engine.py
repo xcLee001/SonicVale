@@ -37,12 +37,13 @@ class LLMEngine:
         response = openai.ChatCompletion.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
-            timeout=3000
+            timeout=3000,
+            response_format={"type": "json_object"}
         )
         return response.choices[0].message.content
     def generate_text(self, prompt: str, retries: int = 3, delay: float = 1.0) -> str:
         """
-        流式生成：边生成边输出，提取 <result> 标签
+        流式生成：边生成边输出
         """
         for attempt in range(retries):
             try:
@@ -51,7 +52,8 @@ class LLMEngine:
                     model=self.model_name,
                     messages=[{"role": "user", "content": prompt}],
                     stream=True,
-                    timeout=3000
+                    timeout=3000,
+                    response_format={"type": "json_object"}
                 )
 
                 # 拼接 delta.content
@@ -64,7 +66,7 @@ class LLMEngine:
                             full_text += content
 
                 print("\n--- 输出完成 ---")
-                return self._extract_result_tag(full_text)
+                return full_text
 
             except Exception as e:
                 if attempt < retries - 1:

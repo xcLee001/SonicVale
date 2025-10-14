@@ -43,6 +43,7 @@ class ChapterService:
 
         chapter = self.repository.get_by_name(entity.title, entity.project_id)
         if chapter:
+            print("同名章节已存在")
             return None
         # 手动将entity转化为po
         po = ChapterPO(**entity.__dict__)
@@ -116,7 +117,7 @@ class ChapterService:
         return res
 
     # 先获取章节内容
-    def split_text(self, chapter_id: int, max_length: int = 800) -> List[str]:
+    def split_text(self, chapter_id: int, max_length: int = 1500) -> List[str]:
         """
         将文本按标点/换行断句，并按最大长度分组，确保每段以标点结束。
         支持中英文标点和换行符。
@@ -185,7 +186,7 @@ class ChapterService:
             llm_provider = llm_provider_repository.get_by_id(llm_provider_id)
             llm = LLMEngine(llm_provider.api_key, llm_provider.api_base_url, project.llm_model)
             try:
-                llm.generate_text_test("你好")
+                llm.generate_text_test("请输出一份用户信息，严格使用 JSON 格式，不要包含任何额外文字。字段包括：name, age, city")
                 print("LLM可用")
             except Exception as e:
                 print("LLM不可用")

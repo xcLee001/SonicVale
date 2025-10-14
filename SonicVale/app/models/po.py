@@ -142,6 +142,9 @@ class LinePO(Base):
         default="pending",
         nullable=False
     )
+    # 是否完成
+    is_done = Column(Integer, default=0, nullable=False)
+
     # 时间戳
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

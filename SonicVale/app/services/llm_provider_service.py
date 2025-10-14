@@ -80,7 +80,8 @@ class LLMProviderService:
             return False
         model_lists = entity.model_list.split(",")
         llm = LLMEngine(entity.api_key, entity.api_base_url, model_lists[0])
-        res = llm.generate_text_test("你好")
+        res = llm.generate_text_test("请输出一份用户信息，严格使用 JSON 格式，不要包含任何额外文字。字段包括：name, age, city")
+        print('测试结果为：', res)
         if res is not None:
             return True
         return False

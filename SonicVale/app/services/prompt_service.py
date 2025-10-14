@@ -141,6 +141,16 @@ class PromptService:
     #         return True
     #     return False
 
+#     根据名字获取提示词
+    def get_prompt_by_name(self, name: str) -> PromptEntity | None:
+        """根据名字获取提示词"""
+        po = self.repository.get_by_name(name)
+        if not po:
+            return None
+        data = {k: v for k, v in po.__dict__.items() if not k.startswith("_")}
+        res = PromptEntity(**data)
+        return res
+
 
 
 

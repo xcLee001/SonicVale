@@ -21,6 +21,7 @@ class LineEntity:
     audio_path : Optional[str] = None
     subtitle_path : Optional[str] = None
     status : Optional[str] = None
-
+    # 是否完成
+    is_done : Optional[int] = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

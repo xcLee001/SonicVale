@@ -32,16 +32,38 @@
 
           <!-- <el-table-column prop="updated_at" label="更新于" min-width="180" /> -->
 
-          <el-table-column label="操作" width="200" fixed="right">
-            <template #default="{ row }">
-              <el-button type="primary" link @click="openLLMDialog(row)">编辑</el-button>
-              <el-popconfirm title="确认删除该 LLM 提供商？" @confirm="removeLLM(row.id)">
-                <template #reference>
-                  <el-button type="danger" link>删除</el-button>
-                </template>
-              </el-popconfirm>
-            </template>
-          </el-table-column>
+          <el-table-column label="操作" width="180" fixed="right" align="center">
+  <template #default="{ row }">
+    <div class="flex justify-center gap-2">
+      <el-button
+        type="primary"
+        size="small"
+        plain
+        @click="openLLMDialog(row)"
+      >
+        编辑
+      </el-button>
+
+      <el-popconfirm
+        title="确认删除该 LLM 提供商？"
+        confirm-button-text="确定"
+        cancel-button-text="取消"
+        @confirm="removeLLM(row.id)"
+      >
+        <template #reference>
+          <el-button
+            type="danger"
+            size="small"
+            plain
+          >
+            删除
+          </el-button>
+        </template>
+      </el-popconfirm>
+    </div>
+  </template>
+</el-table-column>
+
         </el-table>
       </el-tab-pane>
 
@@ -74,7 +96,7 @@
 
           <el-table-column label="操作" width="140" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" link @click="openTTSDialog(row)">编辑</el-button>
+              <el-button type="primary" size="small" plain @click="openTTSDialog(row)">编辑</el-button>
             </template>
           </el-table-column>
         </el-table>

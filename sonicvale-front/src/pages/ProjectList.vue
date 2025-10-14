@@ -131,7 +131,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage,ElLoading } from 'element-plus'
 // import { Plus, Delete } from '@element-plus/icons-vue'
 import { fetchProjects, createProject, deleteProject } from '../api/project'
 import { fetchLLMProviders, fetchTTSProviders } from '../api/provider'
@@ -202,15 +202,23 @@ watch(
 
 // 删除项目
 const handleDelete = async (id) => {
-    try {
-        await deleteProject(id)
-        projects.value = projects.value.filter(p => p.id !== id)
+  const loading = ElLoading.service({
+    lock: true,
+    text: '章节内容较多，删除较久，请稍等...',
+    background: 'rgba(0, 0, 0, 0.3)',
+  })
 
-        ElMessage.success('删除成功')
-    } catch (e) {
-        ElMessage.error('删除失败')
-    }
+  try {
+    await deleteProject(id)
+    projects.value = projects.value.filter(p => p.id !== id)
+    ElMessage.success('删除成功')
+  } catch (e) {
+    ElMessage.error('删除失败')
+  } finally {
+    loading.close()
+  }
 }
+
 
 // 提交表单
 const handleSubmit = () => {

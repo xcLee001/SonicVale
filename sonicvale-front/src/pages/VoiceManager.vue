@@ -71,16 +71,35 @@
       <el-table-column prop="created_at" label="创建时间" width="180" />
       <el-table-column prop="updated_at" label="更新时间" width="180" />
 
-      <el-table-column label="操作" width="200" fixed="right" align="center">
-        <template #default="{ row }">
-          <el-button type="primary" link @click="openDialog(row)">编辑</el-button>
-          <el-popconfirm title="确认删除该音色？" @confirm="handleDelete(row.id)">
-            <template #reference>
-              <el-button type="danger" link>删除</el-button>
-            </template>
-          </el-popconfirm>
+      <el-table-column label="操作" width="180" fixed="right" align="center">
+  <template #default="{ row }">
+    <div class="flex justify-center gap-2">
+      <el-button 
+        type="primary" 
+        size="small" 
+        plain 
+        @click="openDialog(row)">
+        编辑
+      </el-button>
+      <el-popconfirm
+        title="确认删除该音色？"
+        confirm-button-text="确定"
+        cancel-button-text="取消"
+        @confirm="handleDelete(row.id)"
+      >
+        <template #reference>
+          <el-button 
+            type="danger" 
+            size="small" 
+            plain>
+            删除
+          </el-button>
         </template>
-      </el-table-column>
+      </el-popconfirm>
+    </div>
+  </template>
+</el-table-column>
+
     </el-table>
 
     <!-- 弹窗：新增/编辑 -->

@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import Sequence
 
 from app.entity.project_entity import ProjectEntity
@@ -75,3 +77,32 @@ class ProjectService:
 
     def search_projects(self, keyword: str) -> Sequence[ProjectEntity]:
         """模糊搜索项目"""
+
+    # 解析content，按照章节
+    def parse_content(self, content):
+        """解析内容，按照章节"""
+        # 正则匹配常见章节格式（支持中英文数字）
+        chapter_pattern = re.compile(
+            r'(第[\d一二三四五六七八九十百千]+[章回节部卷].*?)(?=\n|$)'
+        )
+        # 找到所有章节标题位置
+        matches = list(chapter_pattern.finditer(content))
+        chapters = []
+        # 如果没找到章节，直接返回整个文本
+        if not matches:
+            return chapters
+
+        for i, match in enumerate(matches):
+            start = match.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+
+            chapter_name = match.group(1).strip()
+            chapter_content = content[start:end].strip()
+            chapters.append({
+                "chapter_name": chapter_name,
+                "content": chapter_content
+            })
+        # 排序
+        # chapters.sort(key=lambda x: x["chapter_name"])
+        # 不需要排序了，因为是顺序解析得到的
+        return  chapters

@@ -1,9 +1,12 @@
-fastapi==0.116.1
+fastapi==0.119.0
+numba==0.61.2
 numpy==2.3.3
 openai==0.28.0
-pydantic==2.11.9
+openpyxl==3.1.5
+pydantic==2.12.2
+pypinyin==0.55.0
 Requests==2.32.5
 soundfile==0.13.1
-SQLAlchemy==2.0.43
+SQLAlchemy==2.0.44
 starlette==0.48.0
-uvicorn==0.35.0
+uvicorn==0.37.0

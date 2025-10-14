@@ -9,8 +9,6 @@ const os = require('os')
 const http = require('http')
 
 
-
-
 let backendProcess = null
 
 function startBackend() {
@@ -60,8 +58,9 @@ function waitForBackendReady(retries = 60, delay = 500) {
 function createWindow() {
   const win = new BrowserWindow({
 
-    width: 1500,
-    height: 800,
+    width: 1360,
+    height: 765,
+    show: false, // ✅ 先不显示，等最大化后再显示
     icon: path.join(__dirname, '../resource/icon/yingu.ico'),
 
     webPreferences: {
@@ -72,8 +71,13 @@ function createWindow() {
       webSecurity: false,
     },
     autoHideMenuBar: true, // 这会让菜单栏自动隐藏，但通过 Alt 可以唤出
+
   })
 
+  win.once('ready-to-show', () => {
+    win.maximize() // ✅ 启动时自动最大化（不是全屏）
+    win.show()     // ✅ 再显示窗口
+  })
   const isDev = !app.isPackaged
   if (isDev) {
     // 开发环境：直连 Vite

@@ -21,7 +21,8 @@ class LineAudioProcessDTO(BaseModel):
     start_ms: Optional[int] = None
     end_ms: Optional[int] = None
 #     静止时间
-    tail_silence_sec: Optional[float] = 0.0
+    silence_sec: Optional[float] = 0.0
+    current_ms: Optional[int] = None
 
 class LineCreateDTO(BaseModel):
     chapter_id: int
@@ -36,6 +37,7 @@ class LineCreateDTO(BaseModel):
 
     audio_path : Optional[str] = None
     status : Optional[str] = None
+    is_done : Optional[int] = 0
     subtitle_path : Optional[str] = None
 
 class LineResponseDTO(BaseModel):
@@ -51,6 +53,7 @@ class LineResponseDTO(BaseModel):
 
     audio_path : Optional[str] = None
     status : Optional[str] = None
+    is_done: Optional[int] = 0
     subtitle_path : Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
