@@ -35,7 +35,7 @@
 - **前端**：Electron + Vue + Element Plus  
 - **后端**：FastAPI / Python
 - **AI 接口**：兼容 OpenAI API 协议的大模型  
-- **TTS 服务**：IndexTTs-2 + Cloud Native Build 平台（免费 H20 显卡支持）  
+- **TTS 服务**：IndexTTs-2 + Cloud Native Build 平台（免费 H20 显卡支持）/ 本地部署整合包
 
 ## 🚀 快速开始
 
