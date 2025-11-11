@@ -1,8 +1,9 @@
 from app.core.subtitle.BcutASR import BcutASR
+from app.core.subtitle.JianYingASR import JianYingASR
 
 
 def generate_subtitle(audio_file,save_path):
-    asr = BcutASR(audio_file)
+    asr = JianYingASR(audio_file)
     result = asr.run()
     result.to_srt(save_path)
     return result
@@ -133,9 +134,14 @@ def segment_corrected_by_recognized_boundaries(recognized_full: str,
 
     cleaned = []
     for line in out_lines:
+        # line = re.sub(r"\s+", "", line)
+        # line = re.sub(r'^(…{1,2}|\.{3,}|[，。！？；：、”])+', '', line)
+        # line = re.sub(r'(…{1,2}|\.{3,}|[，。！？；：、“])+$', '', line)
+        # 同时匹配中英文符号
         line = re.sub(r"\s+", "", line)
-        line = re.sub(r'^(…{1,2}|\.{3,}|[，。！？；：、”])+', '', line)
-        line = re.sub(r'(…{1,2}|\.{3,}|[，。！？；：、“])+$', '', line)
+        line = re.sub(r'^(…{1,2}|\.{3,}|[，,。.!！？?；;：:、”“"“])+', '', line)
+        line = re.sub(r'(…{1,2}|\.{3,}|[，,。.!！？?；;：:、”“"“])+$', '', line)
+
         cleaned.append(line)
 
     return cleaned

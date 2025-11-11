@@ -14,6 +14,15 @@
                 <el-tag effect="light" class="ml8">角色 {{ stats.roleCount }}</el-tag>
                 <el-tag effect="light" class="ml8">台词 {{ stats.lineCount }}</el-tag>
                 <el-tag effect="light" type="danger" class="ml8">剩余生成：{{ queue_rest_size }}</el-tag>
+                <!-- ✅ 精准填充状态 -->
+                <el-tag class="ml8" effect="light" :type="project?.is_precise_fill == 1 ? 'success' : 'info'">
+                    <el-icon style="margin-right: 4px;">
+                        <CircleCheck v-if="project?.is_precise_fill == 1" />
+                        <CircleClose v-else />
+                    </el-icon>
+                    精准填充：{{ project?.is_precise_fill == 1 ? '开启' : '关闭' }}
+                </el-tag>
+
             </div>
             <div class="action-side">
                 <el-button @click="openProjectSettings">
@@ -246,6 +255,11 @@
 
                         <div class="toolbar">
                             <el-input v-model="roleKeyword" placeholder="搜索角色" clearable class="w260" />
+                            <el-button @click="loadRoles" class="ml8">
+                                <el-icon>
+                                    <Refresh />
+                                </el-icon> 刷新
+                            </el-button>
                             <el-button class="ml8" type="primary" @click="$router.push('/voices')">
                                 <el-icon>
                                     <Plus />
@@ -256,6 +270,15 @@
                                     <Plus />
                                 </el-icon> 新建角色
                             </el-button>
+                            <el-tooltip placement="top" content="此功能为测试版，结果可能不稳定，并且效果依赖于音色的标签，因此尽可能完善丰富音色标签。">
+                                <el-button type="danger" @click="addSmartRoleAndVoice">
+                                    <el-icon>
+                                        <MagicStick />
+                                    </el-icon>
+                                    智能匹配音色（Beta）
+                                </el-button>
+                            </el-tooltip>
+
 
                         </div>
 
@@ -472,6 +495,33 @@
                         <el-option v-for="p in prompts" :key="p.id" :label="p.name" :value="p.id" />
                     </el-select>
                 </el-form-item>
+                <!-- ✅ 精准填充开关（0/1） -->
+                <!-- ✅ 精准填充开关 + 小问号解释 -->
+                <el-form-item>
+                    <template #label>
+                        <span class="label-with-help">
+                            精准填充
+                            <el-tooltip effect="dark" placement="top" content="开启后，会自动填充LLM拆分后遗漏的句子或者词语">
+                                <el-icon class="help-icon">
+                                    <QuestionFilled />
+                                </el-icon>
+                            </el-tooltip>
+                        </span>
+                    </template>
+
+                    <el-switch v-model="settingsForm.is_precise_fill" :active-value="1" :inactive-value="0"
+                        active-text="开启" inactive-text="关闭" />
+                </el-form-item>
+                <el-form-item label="项目根路径" prop="project_root_path">
+                    <el-input v-model="settingsForm.project_root_path" readonly
+                        placeholder="例如：D:\\Works\\MyProject 或 /Users/me/Projects/demo" >
+                        <template #append>
+                            <el-button @click="openRootDir">打开目录</el-button>
+                        </template>
+                        </el-input>
+                </el-form-item>
+
+
             </el-form>
 
             <template #footer>
@@ -561,7 +611,10 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Lock, Unlock, ArrowLeft, Setting, Headset, Menu, Plus, Search, Edit, Delete, Refresh, MagicStick, Document, CaretBottom, CaretRight, Upload, VideoPlay, VideoPause, Mute, Check } from '@element-plus/icons-vue'
+import {
+    Lock, Unlock, ArrowLeft, Setting, Headset, Menu, Plus, Search, Edit, Delete, Refresh, MagicStick, Document, CaretBottom, CaretRight, Upload, VideoPlay, VideoPause, Mute, Check,
+    CircleCheck, CircleClose, QuestionFilled
+} from '@element-plus/icons-vue'
 import service from '../api/config'
 import * as chapterAPI from '../api/chapter'
 import * as roleAPI from '../api/role'
@@ -763,7 +816,9 @@ const settingsForm = ref({
     llm_provider_id: null,
     llm_model: null,
     tts_provider_id: null,
-    prompt_id: null
+    prompt_id: null,
+    is_precise_fill: null,      // ✅ 新增字段，默认 0
+    project_root_path: null,
 })
 const settingsRules = {
     name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
@@ -791,7 +846,10 @@ async function openProjectSettings() {
         llm_provider_id: project.value?.llmProviderId ?? project.value?.llm_provider_id ?? null,
         llm_model: project.value?.llmModel ?? project.value?.llm_model ?? null,
         tts_provider_id: project.value?.ttsProviderId ?? project.value?.tts_provider_id ?? null,
-        prompt_id: project.value?.promptId ?? project.value?.prompt_id ?? null
+        prompt_id: project.value?.promptId ?? project.value?.prompt_id ?? null,
+        is_precise_fill: project.value?.is_precise_fill ?? null,
+        project_root_path: project.value?.project_root_path ?? null
+
     }
     console.log('表格详情', settingsForm.value)
 
@@ -837,7 +895,9 @@ watch(
     }
 )
 
-
+async function openRootDir  (){
+    await native.openFolder(settingsForm.value.project_root_path)
+}
 // 保存=更新项目（直接调用你的 update 接口）
 async function saveProjectSettings() {
     console.log('保存项目设置', settingsForm.value)
@@ -855,7 +915,9 @@ async function saveProjectSettings() {
             llm_provider_id: settingsForm.value.llm_provider_id,
             llm_model: settingsForm.value.llm_model,
             tts_provider_id: settingsForm.value.tts_provider_id,
-            prompt_id: settingsForm.value.prompt_id
+            prompt_id: settingsForm.value.prompt_id,
+            is_precise_fill: settingsForm.value.is_precise_fill,
+            project_root_path: settingsForm.value.project_root_path
         }
         console.log('保存项目设置结果', projectId)
 
@@ -1319,7 +1381,7 @@ const roles = ref([]) // RoleResponseDTO[]
 const roleKeyword = ref('')
 const displayedRoles = computed(() => {
     const kw = roleKeyword.value.trim().toLowerCase()
-    return roles.value.filter(r => r.name.toLowerCase().includes(kw))
+    return roles.value.filter(r => r.name.toLowerCase().includes(kw)).sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
 })
 
 const roleVoiceMap = ref({}) // roleId -> voiceId
@@ -1441,6 +1503,44 @@ function openCreateRole() {
     }
     dialogCreateRole.value = true
 }
+async function addSmartRoleAndVoice() {
+    // 二次确认
+    try {
+        await ElMessageBox.confirm(`确定要智能进行匹配音色吗？`, '提示', {
+            confirmButtonText: '确认',
+            cancelButtonText: '取消',
+            type: 'warning',
+        })
+    } catch {
+        return // 用户取消
+    }
+    const loading = ElLoading.service({
+        lock: true,
+        text: '正在智能匹配角色和音色，请稍候...',
+        background: 'rgba(0, 0, 0, 0.4)',
+    })
+    // 发送请求（必须 await + 声明 res）
+    try {
+        const res = await chapterAPI.addSmartRoleAndVoice(projectId, activeChapterId.value)
+        if (res?.code === 200) {
+            // 提取出res.data列表中所有角色名
+            const names = res.data.map(r => r.role_name)
+
+            ElMessage.success(`已为「${names}」智能匹配音色`)
+            await loadRoles()
+            await loadLines()  // 同步台词角色名
+        } else {
+            ElMessage.error(res?.message || '匹配音色失败')
+        }
+    } catch (e) {
+        ElMessage.error('匹配音色异常')
+    } finally {
+        loading.close()
+    }
+
+}
+
+
 
 async function createRole() {
     // 简单防重名提示（前端软校验，最终以后端为准）
@@ -1496,11 +1596,13 @@ async function insertBelow(row) {
     // 1) 先创建新行（后端返回 newId）
     const createRes = await lineAPI.createLine(projectId, {
         chapter_id: row.chapter_id,
-        role_id: null,
+        role_id: row.role_id,
         text_content: '',
         status: 'pending',
         line_order: 0, // 随便，后面统一重排
-        is_done: 0
+        is_done: 0,
+        emotion_id: row.emotion_id,
+        strength_id: row.strength_id
     })
     if (createRes?.code !== 200 || !createRes.data?.id) {
         return ElMessage.error(createRes?.message || '插入失败')
@@ -1519,7 +1621,9 @@ async function insertBelow(row) {
         role_id: null,
         text_content: '',
         status: 'pending',
-        is_done: 0
+        is_done: 0,
+        // 情绪和强度继承当前行
+
     }
 
     lines.value.splice(insertIndex + 1, 0, newLine)
@@ -2440,13 +2544,13 @@ const wrapCellHighlight = (condition, children) => {
         children
     )
 }
-
-const lineColumns = [
+import { reactive } from 'vue'
+const lineColumns = reactive([
     {
         key: 'line_order',
         title: '序',
         width: 60,
-        minWidth: 60,
+        minWidth: 40,
         maxWidth: 60,
         align: 'center',
         cellRenderer: ({ rowData }) => rowData.line_order,
@@ -2455,7 +2559,7 @@ const lineColumns = [
         key: 'role_id',
         title: '角色',
         width: 100,
-        minWidth: 100,
+        minWidth: 50,
         maxWidth: 150,
         align: 'center',
         cellRenderer: ({ rowData }) =>
@@ -2503,7 +2607,7 @@ const lineColumns = [
         key: 'text_content',
         title: '台词文本',
         width: 250,
-        minWidth: 250,
+        minWidth: 100,
         maxWidth: 300,
         align: 'center',
         cellRenderer: ({ rowData }) =>
@@ -2530,7 +2634,7 @@ const lineColumns = [
         key: 'emotion_id',
         title: '情绪',
         width: 120,
-        minWidth: 120,
+        minWidth: 80,
         maxWidth: 150,
         align: 'center',
         cellRenderer: ({ rowData }) =>
@@ -2566,7 +2670,7 @@ const lineColumns = [
         key: 'strength_id',
         title: '强度',
         width: 120,
-        minWidth: 120,
+        minWidth: 80,
         maxWidth: 150,
         align: 'center',
         cellRenderer: ({ rowData }) =>
@@ -2602,8 +2706,8 @@ const lineColumns = [
         title: '试听 / 处理',
         align: 'center',
         width: 500,
-        minWidth: 500,
-        maxWidth: 580,
+        minWidth: 300,
+        maxWidth: 500,
         cellRenderer: ({ rowData }) =>
             h('div', {
                 style: {
@@ -2641,7 +2745,7 @@ const lineColumns = [
         key: 'edit',
         title: '操作',
         width: 150,
-        minWidth: 150,
+        minWidth: 100,
         maxWidth: 200,
         align: 'center',
         headerCellRenderer: () =>
@@ -2781,7 +2885,65 @@ const lineColumns = [
 
 
 
-]
+])
+
+
+// 1) 如果还不是 reactive，先改成 reactive 数组：
+// import 里确保有 reactive / h
+// import { reactive, h } from 'vue'
+
+// 假设你原来是：const lineColumns = [ ... ]
+// 改成：
+// const lineColumns = reactive([ ... ])   // ✅ 让列对象可响应
+
+// 2) 给表头加一个“拖拽手柄”，拖动时修改对应列的 width
+function attachResizableHeader(col) {
+    const min = col.minWidth ?? 80
+    const max = col.maxWidth ?? Infinity
+    const origHeader = col.headerCellRenderer
+
+    col.headerCellRenderer = () => h(
+        'div',
+        { class: 'resizable-header' },
+        [
+            // 原表头内容保留（有就用，没有就显示标题）
+            origHeader ? origHeader() : h('span', col.title),
+            // 右侧拖拽手柄
+            h('span', {
+                class: 'resize-handle',
+                onMousedown: (e) => {
+                    const startX = e.clientX
+                    const startW = Number(col.width ?? min)
+
+                    const onMove = (ev) => {
+                        const delta = ev.clientX - startX
+                        const next = Math.min(max, Math.max(min, startW + delta))
+                        col.width = next  // ✅ 动态改列宽
+                    }
+                    const onUp = () => {
+                        window.removeEventListener('mousemove', onMove)
+                        window.removeEventListener('mouseup', onUp)
+                    }
+                    window.addEventListener('mousemove', onMove)
+                    window.addEventListener('mouseup', onUp)
+                }
+            })
+        ]
+    )
+}
+
+// 3) 指定哪些列可拖（按你的 key 来）
+;[
+    'role_id', 'text_content', 'emotion_id', 'strength_id',
+    'audio', 'edit', 'status', 'actions'
+].forEach(k => {
+    const c = lineColumns.find(col => col.key === k)
+    if (c) {
+        c.resizable = true
+        attachResizableHeader(c)
+    }
+})
+
 async function updateLineIsDone(row, val) {
     // ✅ 修正判断逻辑
     if (!row || !row.id) return
@@ -2803,7 +2965,7 @@ async function updateLineIsDone(row, val) {
     }
 }
 
-
+import { decodeUtf8OrGbk } from "../utils/utf8-or-gbk.js";
 async function handleBatchImport() {
     let loadingInstance = null
     try {
@@ -2835,9 +2997,9 @@ async function handleBatchImport() {
         const file = await fileHandle.getFile()
         // ✅ 使用 TextDecoder 解决乱码
         const arrayBuffer = await file.arrayBuffer()
-        const decoder = new TextDecoder('gbk') // 可换 gb2312 / big5 / utf-8
-        const text = decoder.decode(arrayBuffer)
-
+        // ✅ 仅 UTF-8 / GBK 自动识别
+        const { encoding, text } = decodeUtf8OrGbk(arrayBuffer);
+        console.log('TXT 文件内容:', text)
         // 如果文件内容为空
         if (!text.trim()) {
             ElMessage.warning('TXT 文件为空，未执行导入')
@@ -3609,5 +3771,26 @@ function restoreLastChapter() {
     transform: translateY(-1px);
     box-shadow: 0 0 4px rgba(64, 158, 255, 0.15);
     border-radius: 4px;
+}
+
+:deep(.resizable-header) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 或 space-between，看表头内容 */
+    height: 100%;
+    padding-right: 6px;
+    /* 给手柄留空间 */
+    user-select: none;
+}
+
+:deep(.resize-handle) {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
 }
 </style>

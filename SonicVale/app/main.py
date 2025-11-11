@@ -8,6 +8,7 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from starlette.middleware.cors import CORSMiddleware
 
+from app.core.config import getConfigPath
 from app.core.prompts import get_prompt_str
 from app.core.tts_runtime import tts_worker
 from app.core.ws_manager import manager
@@ -19,8 +20,9 @@ from app.repositories.llm_provider_repository import LLMProviderRepository
 from app.repositories.tts_provider_repository import TTSProviderRepository
 from app.routers import project_router, chapter_router, role_router, voice_router, llm_provider_router, \
     tts_provider_router, line_router, emotion_router, strength_router, multi_emotion_voice_router, prompt_router
-from app.routers.chapter_router import get_strength_service, get_prompt_service
+from app.routers.chapter_router import get_strength_service, get_prompt_service, get_project_service
 from app.routers.emotion_router import get_emotion_service
+from app.routers.llm_provider_router import get_llm_service
 from app.services.llm_provider_service import LLMProviderService
 
 from app.services.tts_provider_service import TTSProviderService
@@ -65,7 +67,7 @@ app.add_middleware(
 #     Base.metadata.create_all(bind=engine)
 
 WORKERS = 1
-QUEUE_CAPACITY = 200
+QUEUE_CAPACITY = 500
 
 from sqlalchemy import text
 
@@ -88,7 +90,52 @@ def add_is_done_column():
             conn.execute(text("ALTER TABLE lines ADD COLUMN is_done INTEGER DEFAULT 0"))
             conn.commit()
 
+# 添加LLM自定义参数字段
+def add_custom_params_column():
+    with engine.begin() as conn:  # ✅ 用 begin() 自动提交事务
+        result = conn.execute(text("PRAGMA table_info(llm_provider)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "custom_params" not in columns:
+            # ✅ 添加列
+            conn.execute(text("ALTER TABLE llm_provider ADD COLUMN custom_params TEXT"))
 
+            # ✅ 可选：为历史数据填入默认 JSON（推荐）
+            import json
+            default_json = json.dumps({
+                "response_format": {"type": "json_object"},
+                "temperature": 0.7,
+                "top_p": 0.9
+            }, ensure_ascii=False)
+            conn.execute(
+                text("UPDATE llm_provider SET custom_params = :val"),
+                {"val": default_json}
+            )
+
+            print("已添加 custom_params 列并写入默认值。")
+        else:
+            print("custom_params 列已存在，跳过。")
+
+# 添加精准填充字段】
+def add_is_precise_fill_column():
+    with engine.begin() as conn:  # ✅ 用 begin() 自动提交事务
+        result = conn.execute(text("PRAGMA table_info(projects)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "is_precise_fill" not in columns:
+            # ✅ 添加列
+            conn.execute(text("ALTER TABLE projects ADD COLUMN is_precise_fill INTEGER DEFAULT 0"))
+
+            conn.commit()
+
+# 添加项目保存路径字段（project_path）
+def add_project_root_path_column():
+    with engine.begin() as conn:  # ✅ 用 begin() 自动提交事务
+        result = conn.execute(text("PRAGMA table_info(projects)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "project_root_path" not in columns:
+            # ✅ 添加列
+            conn.execute(text("ALTER TABLE projects ADD COLUMN project_root_path TEXT"))
+
+            conn.commit()
 
 def get_tts_service(db: Session = Depends(get_db)) -> TTSProviderService:
     return TTSProviderService(TTSProviderRepository(db))
@@ -105,6 +152,12 @@ async def startup_event():
     add_prompt_id_column()
     # v1.0.6添加字段 is_done
     add_is_done_column()
+    # v1.0.7 添加字段 custom_params
+    add_custom_params_column()
+    # v1.0.7 添加项目的字段 is_precise_fill
+    add_is_precise_fill_column()
+    # v1.0.7 添加项目的字段 project_root_path
+    add_project_root_path_column()
 
     # 2) 初始化共享运行时
     try:
@@ -168,7 +221,18 @@ async def startup_event():
 
         except Exception as e:
             logging.warning("⚠️ 默认提示词创建失败: %s", e)
+    # 兼容之前版本，已有的项目的project_root_path 为 getConfigPath()
+        try:
+            project_service = get_project_service(db)
+            for project in project_service.get_all_projects():
+                if not project.project_root_path:
+                    project.project_root_path = getConfigPath()
+                    project_service.update_project(project.id, project.__dict__)
+                    print("项目 %s 默认项目路径已修改为 %s" % (project.name, project.project_root_path))
 
+        #             todo:修改所有的保存路径，然后前端请求添加保存路径（利用electron读取文件夹路径）
+        except Exception as e:
+            logging.warning("⚠️ 项目默认项目路径初始化失败: %s", e)
 
     except Exception as e:
         logging.exception("❌ 默认数据初始化异常: %s", e)

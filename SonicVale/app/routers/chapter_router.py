@@ -3,6 +3,7 @@ import asyncio
 import io
 import json
 import logging
+import os
 import traceback
 
 from typing import List
@@ -13,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Form
 
 
 from app.core.response import Res
+from app.core.text_correct_engine import TextCorrectorFinal
 from app.core.ws_manager import manager
 from app.db.database import get_db, SessionLocal
 from app.dto.chapter_dto import ChapterResponseDTO, ChapterCreateDTO
@@ -207,6 +209,8 @@ async def get_lines(
         return Res(data=None, code=500, message="初始化角色/情绪/强度失败")
 
     project = project_service.get_project(project_id)
+    # 精准填充
+    is_precise_fill = project.is_precise_fill
     # 判断tts，llm，model是否存在
     if project.tts_provider_id is None or project.llm_provider_id is None or project.llm_model is None:
         return Res(data=None, code=500, message="tts/llm/model不存在")
@@ -223,7 +227,7 @@ async def get_lines(
             roles_list = list(roles)
             result = chapter_service.para_content(
                 prompt.content, chapter_id, content,
-                roles_list, emotion_names, strength_names
+                roles_list, emotion_names, strength_names,is_precise_fill
             )
 
             if not result["success"]:
@@ -247,8 +251,10 @@ async def get_lines(
             return Res(data=None, code=500, message=f"解析失败：第 {idx + 1} 段处理出错，错误信息：{e}")
 
     try:
+        audio_path = os.path.join(project.project_root_path,str(project_id),str(chapter_id),"audio")
+        os.makedirs(audio_path, exist_ok=True)
         line_service.update_init_lines(
-            all_line_data, project_id, chapter_id, emotions_dict, strengths_dict
+            all_line_data, project_id, chapter_id, emotions_dict, strengths_dict,audio_path
         )
     except Exception as e:
         logging.error(f"写入数据库失败: {e}\n{traceback.format_exc()}")
@@ -288,7 +294,9 @@ async def export_llm_prompt(project_id:int,chapter_id: int, chapter_service: Cha
 @router.post("/import-lines/{project_id}/{chapter_id}",response_model=Res[str],summary="导入第三方json",description="导入第三方json")
 async def import_lines(project_id: int,chapter_id: int,data:str=Form( ...),line_service: LineService = Depends(get_line_service),
                        emotion_service: EmotionService = Depends(get_emotion_service),
-                       strength_service: StrengthService = Depends(get_strength_service)):
+                       strength_service: StrengthService = Depends(get_strength_service),
+                       project_service: ProjectService = Depends(get_project_service),
+                       chapter_service: ChapterService = Depends(get_chapter_service)):
     # 解析data
     lines_data = json.loads(data)
     # 转化成List[LineInitDTO]
@@ -297,9 +305,22 @@ async def import_lines(project_id: int,chapter_id: int,data:str=Form( ...),line_
 
     emotions_dict = {emotion.name: emotion.id for emotion in emotions}
     strengths_dict = {strength.name: strength.id for strength in strengths}
-
+    # 精准填充
+    project = project_service.get_project(project_id)
+    is_precise_fill = project.is_precise_fill
+    # 获取章节内容
+    content = chapter_service.get_chapter(chapter_id).text_content
+    if not content:
+        return Res(data=None, code=500, message="章节内容为空")
+    if is_precise_fill == 1:
+        corrector = TextCorrectorFinal()
+        lines_data = corrector.correct_ai_text(content, lines_data)
     lines_data = [LineInitDTO(**line) for line in lines_data]
-    line_service.update_init_lines(lines_data, project_id, chapter_id, emotions_dict, strengths_dict)
+
+
+    audio_path = os.path.join(project.project_root_path,str(project_id),str(chapter_id),"audio")
+    os.makedirs(audio_path, exist_ok=True)
+    line_service.update_init_lines(lines_data, project_id, chapter_id, emotions_dict, strengths_dict,audio_path)
     return Res(data=None, code=200, message="导入成功")
 
 
@@ -336,3 +357,37 @@ async def import_lines(project_id: int,chapter_id: int,data:str=Form( ...),line_
 # async def export_audio(project_id: int,chapter_id: int, chapter_service: ChapterService = Depends(get_chapter_service))
 #     res = chapter_service.export_audio(project_id,chapter_id)
 
+# 添加智能匹配角色和音色的功能
+@router.post("/add-smart-role-and-voice/{project_id}/{chapter_id}",response_model=Res[List],summary="添加智能匹配角色和音色的功能",description="添加智能匹配角色和音色的功能")
+async def add_smart_role_and_voice(project_id: int,chapter_id: int,
+                                   chapter_service: ChapterService = Depends(get_chapter_service),
+                                   project_service: ProjectService = Depends(get_project_service),
+                                   voice_service: VoiceService = Depends(get_voice_service),
+                                   role_service: RoleService = Depends(get_role_service)):
+    # 获取项目信息
+    project = project_service.get_project(project_id)
+    # 首先获取项目下所有角色
+    roles = role_service.get_all_roles(project_id)
+#     将所有角色未绑定音色的角色提取出来
+    roles_no_voice = [role for role in roles if role.default_voice_id is None]
+    # 只要角色name
+    role_names = [role.name for role in roles_no_voice]
+    # 获取所有音色
+    voices = voice_service.get_all_voices(project.tts_provider_id)
+    # 只要音色的名字和描述
+    voice_names = [
+        {
+            "name": voice.name,
+            "description": voice.description
+        }
+        for voice in voices
+    ]
+    # 获取原文内容
+    content = chapter_service.get_chapter(chapter_id).text_content
+    res,data = chapter_service.add_smart_role_and_voice(project,content,role_names,voice_names)
+    # 将data中的每一个元素转化为RoleBindVoiceDTO
+    # data = [RoleBindVoiceDTO(**item) for item in data]
+    if res:
+        return Res(data=data, code=200, message="智能匹配成功")
+    else:
+        return Res(data=None, code=500, message="智能匹配失败")

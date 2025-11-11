@@ -75,7 +75,7 @@ def create_line(project_id:int,dto: LineCreateDTO, line_service: LineService = D
         entityRes = line_service.create_line(entity)
 
         # 新增台词,这里搞个audio_path
-        audio_path = os.path.join(getConfigPath(), str(project_id), str(dto.chapter_id), "audio")
+        audio_path = os.path.join(project.project_root_path, str(project_id), str(dto.chapter_id), "audio")
         os.makedirs(audio_path, exist_ok=True)
         res_path = os.path.join(audio_path, "id_" + str(entityRes.id) + ".wav")
         line_service.update_line(entityRes.id, {"audio_path": res_path})

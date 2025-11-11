@@ -1,7 +1,7 @@
 {
   "name": "sonicvale",
   "productName": "音谷",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "author": "lxc",
   "main": "electron/main.js",
   "scripts": {
@@ -51,6 +51,8 @@
     "iconv-lite": "^0.7.0",
     "sortablejs": "^1.15.6",
     "vue": "^3.5.18",
+    "vue-json-editor": "^1.4.3",
+    "vue-json-pretty": "^2.6.0",
     "vue-router": "^4.5.1",
     "vue-virtual-scroll-list": "^2.3.5",
     "wavesurfer.js": "^7.10.1"

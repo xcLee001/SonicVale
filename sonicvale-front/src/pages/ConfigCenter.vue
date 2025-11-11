@@ -33,36 +33,23 @@
           <!-- <el-table-column prop="updated_at" label="更新于" min-width="180" /> -->
 
           <el-table-column label="操作" width="180" fixed="right" align="center">
-  <template #default="{ row }">
-    <div class="flex justify-center gap-2">
-      <el-button
-        type="primary"
-        size="small"
-        plain
-        @click="openLLMDialog(row)"
-      >
-        编辑
-      </el-button>
+            <template #default="{ row }">
+              <div class="flex justify-center gap-2">
+                <el-button type="primary" size="small" plain @click="openLLMDialog(row)">
+                  编辑
+                </el-button>
 
-      <el-popconfirm
-        title="确认删除该 LLM 提供商？"
-        confirm-button-text="确定"
-        cancel-button-text="取消"
-        @confirm="removeLLM(row.id)"
-      >
-        <template #reference>
-          <el-button
-            type="danger"
-            size="small"
-            plain
-          >
-            删除
-          </el-button>
-        </template>
-      </el-popconfirm>
-    </div>
-  </template>
-</el-table-column>
+                <el-popconfirm title="确认删除该 LLM 提供商？" confirm-button-text="确定" cancel-button-text="取消"
+                  @confirm="removeLLM(row.id)">
+                  <template #reference>
+                    <el-button type="danger" size="small" plain>
+                      删除
+                    </el-button>
+                  </template>
+                </el-popconfirm>
+              </div>
+            </template>
+          </el-table-column>
 
         </el-table>
       </el-tab-pane>
@@ -121,6 +108,10 @@
         <el-form-item label="状态">
           <el-switch v-model="llmForm.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
+        <el-form-item label="自定义参数" prop="custom_params">
+          <el-input type="textarea" v-model="llmForm.custom_params" :rows="6" placeholder='请输入 JSON 格式参数' />
+        </el-form-item>
+
       </el-form>
 
       <template #footer>
@@ -143,9 +134,11 @@
         <el-form-item label="API Key">
           <el-input v-model="ttsForm.api_key" placeholder="可留空" show-password />
         </el-form-item>
+
         <el-form-item label="状态">
           <el-switch v-model="ttsForm.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
+
       </el-form>
 
       <template #footer>
@@ -165,7 +158,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   fetchLLMProviders, createLLMProvider, updateLLMProvider, deleteLLMProvider,
-  fetchTTSProviders, updateTTSProvider, testLLMProvider,testTTSProvider
+  fetchTTSProviders, updateTTSProvider, testLLMProvider, testTTSProvider
 } from '../api/provider'
 
 const activeTab = ref('llm')
@@ -177,21 +170,54 @@ const loadLLM = async () => { llmList.value = await fetchLLMProviders() }
 
 const llmDialogVisible = ref(false)
 const llmFormRef = ref()
+const DEFAULT_CUSTOM_PARAMS = JSON.stringify(
+  {
+    response_format: { type: 'json_object' },
+    temperature: 0.7,
+    top_p: 0.9
+  },
+  null,
+  2  // 漂亮一点，换行缩进
+)
+
 const llmForm = ref({
   id: null,
   name: '',
   api_base_url: '',
   api_key: '',
   model_list: '',
-  status: 1
+  status: 1,
+  custom_params: DEFAULT_CUSTOM_PARAMS
 })
 const llmRules = {
   name: [{ required: true, message: '请输入名称', trigger: 'blur' }],
-  api_base_url: [{ required: true, message: '请输入 Base URL', trigger: 'blur' }]
+  api_base_url: [{ required: true, message: '请输入 Base URL', trigger: 'blur' }],
+  custom_params: [
+    {
+      required: true,
+      message: '自定义参数不能为空，至少为 {}',
+      trigger: 'blur'
+    },
+    {
+      validator: (rule, value, callback) => {
+        const v = (value || '').trim()
+        if (!v) {
+          return callback(new Error('自定义参数不能为空，至少为 {}'))
+        }
+        try {
+          JSON.parse(v)
+          callback()
+        } catch (e) {
+          callback(new Error('自定义参数必须是合法 JSON 格式'))
+        }
+      },
+      trigger: 'blur'
+    }
+  ]
 }
 function openLLMDialog(row) {
   if (row) llmForm.value = { ...row }
-  else llmForm.value = { id: null, name: '', api_base_url: '', api_key: '', model_list: '', status: 1 }
+  else llmForm.value = { id: null, name: '', api_base_url: '', api_key: '', model_list: '', status: 1, custom_params: DEFAULT_CUSTOM_PARAMS }
   llmDialogVisible.value = true
 }
 function submitLLM() {
@@ -223,7 +249,7 @@ async function removeLLM(id) {
 }
 
 
-import {  ElLoading } from 'element-plus'
+import { ElLoading } from 'element-plus'
 
 async function testLLM() {
   // 打开等待框
@@ -259,7 +285,7 @@ const ttsForm = ref({
   name: '',
   api_base_url: '',
   api_key: '',
-  status: 1
+  status: 1,
 })
 const ttsRules = {
   name: [{ required: true, message: '请输入名称', trigger: 'blur' }]

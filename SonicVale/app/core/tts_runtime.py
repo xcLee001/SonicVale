@@ -9,7 +9,7 @@ from app.routers.chapter_router import get_voice_service, get_emotion_service, g
 from app.routers.multi_emotion_voice_router import get_multi_emotion_voice_service
 from app.routers.role_router import get_line_service, get_role_service, get_project_service
 
-TTS_TIMEOUT_SECONDS = 120  # 可调
+TTS_TIMEOUT_SECONDS = 1200  # 可调
 def emotion_text_to_vector(emotion: str, intensity: str) -> list[float]:
     """
     将情绪(文本) + 强度(文本) 转换成 8维向量

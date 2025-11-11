@@ -29,7 +29,9 @@ contextBridge.exposeInMainWorld('native', {
   // 
   openFolder: (folderPath) => ipcRenderer.invoke('dialog:open-folder', folderPath),
   // 选择音色文件夹
-  selectVoiceFolder: () => ipcRenderer.invoke('select-voice-folder')
+  selectVoiceFolder: () => ipcRenderer.invoke('select-voice-folder'),
+  // 选择项目根路径文件夹
+  selectDir: () => ipcRenderer.invoke('dialog:selectDir'),
 })
 
 

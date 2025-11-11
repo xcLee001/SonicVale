@@ -1,8 +1,7 @@
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
-
+from typing import Optional, Dict, Any
 
 
 @dataclass
@@ -16,3 +15,6 @@ class LLMProviderEntity:
     status : Optional[int] = None
     updated_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+
+    # ✅ 自定义参数字段（默认值与数据库一致）
+    custom_params: Optional[str] = None

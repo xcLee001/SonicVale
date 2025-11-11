@@ -56,12 +56,29 @@
                                     <Document />
                                 </el-icon> 提示词：{{ getPromptName(item.promptId) }}
                             </p>
+                            <!-- ✅ 精确填充状态 + 图标 -->
+                            <p class="project-meta" :class="item.is_precise_fill == 1 ? 'precise-on' : 'precise-off'">
+                                <el-icon>
+                                    <CircleCheck v-if="item.is_precise_fill == 1" />
+                                    <CircleClose v-else />
+                                </el-icon>
+                                精确填充：{{ item.is_precise_fill == 1 ? '开启' : '关闭' }}
+                            </p>
+
                             <!-- 更新时间 -->
                             <p class="project-meta">
-                                <el-icon >
+                                <el-icon>
                                     <Clock />
                                 </el-icon> 创建时间：{{ new Date(item.createdAt).toLocaleString() }}
                             </p>
+                            <p class="project-meta">
+                                <el-icon>
+                                    <Folder />
+                                </el-icon>
+                                根路径：{{ item.project_root_path }}
+                            </p>
+
+
 
                         </div>
 
@@ -118,6 +135,24 @@
                         <el-option v-for="p in prompts" :key="p.id" :label="p.name" :value="p.id" />
                     </el-select>
                 </el-form-item>
+                <!-- ✅ 是否精确填充（0/1） -->
+                <el-form-item label="精确填充">
+                    <el-switch v-model="form.is_precise_fill" :active-value="1" :inactive-value="0" active-text="开启"
+                        inactive-text="关闭" />
+                </el-form-item>
+                <!-- 项目根路径（可选） -->
+                <!-- 项目根路径（选择文件夹 + 只读可复制） -->
+                <el-form-item label="项目根路径" prop="project_root_path">
+                    <el-input v-model="form.project_root_path" readonly
+                        placeholder="例如：D:\\Works\\MyProject 或 /Users/me/Projects/demo">
+                        <template #append>
+                            <el-button @click="pickRootDir">选择</el-button>
+                        </template>
+                    </el-input>
+                </el-form-item>
+
+
+
 
             </el-form>
 
@@ -131,12 +166,12 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import { ElMessage,ElLoading } from 'element-plus'
+import { ElMessage, ElLoading } from 'element-plus'
 // import { Plus, Delete } from '@element-plus/icons-vue'
 import { fetchProjects, createProject, deleteProject } from '../api/project'
 import { fetchLLMProviders, fetchTTSProviders } from '../api/provider'
 import { fetchPromptList } from '../api/prompt'
-import { Plus, Delete, Cpu, Mic, Document, Clock } from "@element-plus/icons-vue"
+import { Plus, Delete, Cpu, Mic, Document, Clock, CircleCheck, CircleClose, Folder } from "@element-plus/icons-vue"
 const prompts = ref([])
 
 const projects = ref([])
@@ -149,14 +184,17 @@ const form = ref({
     llm_provider_id: null,
     llm_model: null,
     tts_provider_id: null,
-    prompt_id: null
+    prompt_id: null,
+    is_precise_fill: 0,      // ✅ 新增字段
+    project_root_path: null,
 })
 
 // 校验规则
 const rules = {
     name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
     description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }],
-    prompt_id: [{ required: true, message: '请选择提示词模版', trigger: 'change' }]
+    prompt_id: [{ required: true, message: '请选择提示词模版', trigger: 'change' }],
+    project_root_path: [{ required: true, message: '请输入项目根路径', trigger: 'blur' }],
 }
 
 const formRef = ref(null)
@@ -202,21 +240,21 @@ watch(
 
 // 删除项目
 const handleDelete = async (id) => {
-  const loading = ElLoading.service({
-    lock: true,
-    text: '章节内容较多，删除较久，请稍等...',
-    background: 'rgba(0, 0, 0, 0.3)',
-  })
+    const loading = ElLoading.service({
+        lock: true,
+        text: '章节内容较多，删除较久，请稍等...',
+        background: 'rgba(0, 0, 0, 0.3)',
+    })
 
-  try {
-    await deleteProject(id)
-    projects.value = projects.value.filter(p => p.id !== id)
-    ElMessage.success('删除成功')
-  } catch (e) {
-    ElMessage.error('删除失败')
-  } finally {
-    loading.close()
-  }
+    try {
+        await deleteProject(id)
+        projects.value = projects.value.filter(p => p.id !== id)
+        ElMessage.success('删除成功')
+    } catch (e) {
+        ElMessage.error('删除失败')
+    } finally {
+        loading.close()
+    }
 }
 
 
@@ -225,17 +263,48 @@ const handleSubmit = () => {
     formRef.value.validate(async (valid) => {
         if (valid) {
             try {
-                await createProject(form.value)
-                ElMessage.success('项目创建成功')
-                dialogVisible.value = false
-                // 重置表单
-                Object.assign(form.value, { name: '', description: '', llm_provider_id: null, llm_model: null, tts_provider_id: null, prompt_id: null })
-                projects.value = await fetchProjects()
+                const res = await createProject(form.value)
+                if (res?.code === 200) {
+                    ElMessage.success('项目创建成功')
+                    dialogVisible.value = false
+
+                    // ✅ 重置表单
+                    Object.assign(form.value, {
+                        name: '',
+                        description: '',
+                        llm_provider_id: null,
+                        llm_model: null,
+                        tts_provider_id: null,
+                        prompt_id: null,
+                        is_precise_fill: 0,
+                        project_root_path: null,
+                    })
+
+                    projects.value = await fetchProjects()
+                } else {
+                    // ✅ 正常请求但业务失败
+                    ElMessage.error(`创建失败：${res?.message || '未知错误'}`)
+                }
             } catch (e) {
-                ElMessage.error('创建失败')
+                ElMessage.error(`创建失败：${e?.message || '网络异常'}`)
             }
         }
     })
+}
+
+
+const native = window.native
+const pickRootDir = async () => {
+    try {
+        const dir = await native?.selectDir()
+        if (dir) {
+            form.value.project_root_path = dir
+            // 如果设为必填，选完后立即触发该字段校验（可选）
+            // formRef.value?.validateField?.('project_root_path')
+        }
+    } catch (e) {
+        ElMessage.error(`选择失败：${e?.message || '未知错误'}`)
+    }
 }
 </script>
 
@@ -307,5 +376,15 @@ const handleSubmit = () => {
 .project-actions {
     text-align: right;
     margin-top: 14px;
+}
+
+.precise-on {
+    color: #67C23A;
+    /* 绿色，表示开启 */
+}
+
+.precise-off {
+    color: #F56C6C;
+    /* 红色，表示关闭 */
 }
 </style>

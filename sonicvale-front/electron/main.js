@@ -225,3 +225,13 @@ ipcMain.handle('select-voice-folder', async () => {
 })
 
 
+// ✅ 选择文件夹：返回选中的绝对路径
+ipcMain.handle('dialog:selectDir', async () => {
+  const result = await dialog.showOpenDialog({
+    title: '选择项目根路径',
+    properties: ['openDirectory', 'createDirectory']
+  })
+  if (result.canceled || !result.filePaths || !result.filePaths.length) return null
+  return result.filePaths[0]
+})
+

@@ -49,3 +49,10 @@ export function importThirdLines(projectId, chapterId, formData) {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
+
+// 智能匹配音色
+// @router.post("/add-smart-role-and-voice/{project_id}/{chapter_id}",response_model=Res[str],summary="添加智能匹配角色和音色的功能",description="添加智能匹配角色和音色的功能")
+// async def add_smart_role_and_voice(project_id: int,chapter_id: int,
+export function addSmartRoleAndVoice(projectId, chapterId) {
+  return request.post(`/chapters/add-smart-role-and-voice/${projectId}/${chapterId}`)
+}

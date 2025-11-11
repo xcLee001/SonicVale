@@ -9,6 +9,7 @@ from typing import List
 from sqlalchemy import Sequence
 
 from app.core.config import getConfigPath
+from app.core.text_correct_engine import TextCorrectorFinal
 from app.core.tts_engine import TTSEngine
 from app.db.database import SessionLocal
 from app.dto.line_dto import LineInitDTO
@@ -19,13 +20,12 @@ from app.models.po import ChapterPO, RolePO, LinePO
 from app.repositories.chapter_repository import ChapterRepository
 from app.repositories.line_repository import LineRepository
 
-from app.core.prompts import get_context2lines_prompt
+from app.core.prompts import get_context2lines_prompt, get_add_smart_role_and_voice
 from app.repositories.llm_provider_repository import LLMProviderRepository
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.role_repository import RoleRepository
 from app.core.llm_engine import LLMEngine
-
-
+from app.repositories.voice_repository import VoiceRepository
 
 
 class ChapterService:
@@ -100,18 +100,22 @@ class ChapterService:
         db = SessionLocal()
         try :
             chapter = self.repository.get_by_id(chapter_id)
-            res = self.repository.delete(chapter_id)
-            # 删除章节下所有台词
-            line_repository = LineRepository(db)
-            line_res = line_repository.delete_all_by_chapter_id(chapter_id)
+
         #     移除资源内容
             # 删除该路径所有内容
-            chapter_path = os.path.join(getConfigPath(), str(chapter.project_id), str(chapter_id))
+            project_repository = ProjectRepository(db)
+            project = project_repository.get_by_id(chapter.project_id)
+            chapter_path = os.path.join(project.project_root_path, str(chapter.project_id), str(chapter_id))
             if os.path.exists(chapter_path):
                 shutil.rmtree(chapter_path)  # 删除整个文件夹及其所有内容
                 print(f"已删除目录及内容: {chapter_path}")
             else:
                 print(f"目录不存在: {chapter_path}")
+            #     先删除资源，再删除记录
+            res = self.repository.delete(chapter_id)
+            # 删除章节下所有台词
+            line_repository = LineRepository(db)
+            line_res = line_repository.delete_all_by_chapter_id(chapter_id)
         finally:
             db.close()
         return res
@@ -162,7 +166,7 @@ class ChapterService:
         result = result.replace("{novel_content}", novel_content)
         return result
 
-    def para_content(self, prompt:str,chapter_id: int,content: str = None,role_names: List[str] = None,emotion_names: List[str] = None,strength_names: List[str] = None):
+    def para_content(self, prompt:str,chapter_id: int,content: str = None,role_names: List[str] = None,emotion_names: List[str] = None,strength_names: List[str] = None,is_precise_fill: int = 0):
         db = SessionLocal()
         try :
     #         获取content
@@ -184,7 +188,7 @@ class ChapterService:
             #
             llm_provider_repository = LLMProviderRepository(db)
             llm_provider = llm_provider_repository.get_by_id(llm_provider_id)
-            llm = LLMEngine(llm_provider.api_key, llm_provider.api_base_url, project.llm_model)
+            llm = LLMEngine(llm_provider.api_key, llm_provider.api_base_url, project.llm_model, llm_provider.custom_params)
             try:
                 llm.generate_text_test("请输出一份用户信息，严格使用 JSON 格式，不要包含任何额外文字。字段包括：name, age, city")
                 print("LLM可用")
@@ -205,6 +209,13 @@ class ChapterService:
                         "success": False,
                         "message": "JSON 解析失败或返回空对象",
                     }
+                # 这里进行自动填充
+
+                if is_precise_fill == 1:
+                    print("开始自动填充")
+                    corrector = TextCorrectorFinal()
+                    parsed_data = corrector.correct_ai_text(content, parsed_data)
+
                 # parsed_data = json.loads(result)
                 # 构造 List[LineInitDTO]
                 line_dtos: List[LineInitDTO] = [LineInitDTO(**item) for item in parsed_data]
@@ -242,6 +253,42 @@ class ChapterService:
     #         return  prompt
     #     finally:
     #         db.close()
+    def add_smart_role_and_voice(self,project,content, role_names, voice_names):
+        # 智能匹配提示词，要写死吗？
+        db = SessionLocal()
+        try:
+            llm_provider_id = project.llm_provider_id
+            llm_provider_repository = LLMProviderRepository(db)
+            llm_provider = llm_provider_repository.get_by_id(llm_provider_id)
+            llm = LLMEngine(llm_provider.api_key, llm_provider.api_base_url, project.llm_model, llm_provider.custom_params)
+            prompt = get_add_smart_role_and_voice(content,role_names, voice_names)
+            result = llm.generate_smart_text(prompt)
+            parse_data = llm.save_load_json(result)
+            # 获取项目所有音色
+            voice_repository = VoiceRepository(db)
+            voices = voice_repository.get_all(project.tts_provider_id)
+            # map name- id
+            voice_id_map = {voice.name: voice.id for voice in voices}
+
+
+            # 对角色进行update
+            role_repository = RoleRepository(db)
+            res = []
+            for item in parse_data:
+                role = role_repository.get_by_name( item["role_name"],project.id)
+                if role:
+                    if item["voice_name"]:
+                        print("更新角色音色：", item["role_name"], item["voice_name"])
+                        role_repository.update(role.id, {"default_voice_id": voice_id_map.get(item["voice_name"])})
+                        res.append({"role_name": item["role_name"], "voice_name": item["voice_name"]})
+
+            return True,res
+        except Exception as e:
+            print("LLM智能匹配出错：", e)
+            return False, []
+        finally:
+            db.close()
+
 
 
 

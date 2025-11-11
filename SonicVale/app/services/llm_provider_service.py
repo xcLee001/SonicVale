@@ -1,3 +1,6 @@
+import json
+
+from aiohttp.abc import HTTPException
 from sqlalchemy import Sequence
 
 from app.core.llm_engine import LLMEngine
@@ -79,12 +82,22 @@ class LLMProviderService:
         if entity.api_base_url is None or entity.api_key is None or entity.model_list is None:
             return False
         model_lists = entity.model_list.split(",")
-        llm = LLMEngine(entity.api_key, entity.api_base_url, model_lists[0])
-        res = llm.generate_text_test("请输出一份用户信息，严格使用 JSON 格式，不要包含任何额外文字。字段包括：name, age, city")
+        custom_params = entity.custom_params
+        llm = LLMEngine(entity.api_key, entity.api_base_url, model_lists[0],custom_params)
+        try:
+            res = llm.generate_text_test("请输出一份用户信息，严格使用 JSON 格式，不要包含任何额外文字。字段包括：name, age, city")
+        except Exception as e:
+            return  False,str(e)
         print('测试结果为：', res)
-        if res is not None:
-            return True
-        return False
+        if res is None:
+            return False,"LLM 未返回任何内容"
+
+        # 7. 校验返回是否为合法 JSON
+        try:
+            json.loads(res)
+        except json.JSONDecodeError:
+            return False, "LLM 返回的内容不是合法 JSON，请检查模型 / 提示词"
+        return True,"测试成功"
 
 
 

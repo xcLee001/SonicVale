@@ -18,6 +18,8 @@ export function fetchProjects() {
         ttsProviderId: p.tts_provider_id,
         llmProviderId: p.llm_provider_id,
         promptId: p.prompt_id,
+        is_precise_fill: p.is_precise_fill,  // ✅ 新增字段
+        project_root_path: p.project_root_path,
       }))
 
       // 🔥 按更新时间排序（最新在前）

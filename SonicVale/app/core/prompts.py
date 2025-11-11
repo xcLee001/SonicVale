@@ -142,18 +142,6 @@ def get_prompt_str():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 def get_auto_fix_json_prompt(json_str: str) -> str:
     prompt = f"""
     你将收到一段可能出错的 JSON 字符串（它可能是 LLM 生成的结果），其中可能存在以下问题：
@@ -172,4 +160,48 @@ def get_auto_fix_json_prompt(json_str: str) -> str:
     {json_str}
     </json_str>w
     """
+    return textwrap.dedent(prompt)
+
+
+def get_add_smart_role_and_voice(original_text: str, role_name, voice_names):
+    prompt = f"""
+    你是“角色音色匹配助手”。你的任务是：根据小说原文中的角色表现，为每个在<role_name>中出现的角色匹配最符合其语气与性格的音色。
+
+    原文内容：
+    <original_text>
+    {original_text}
+    </original_text>
+
+    角色列表信息：
+    <role_name>
+    {role_name}
+    </role_name>
+
+    音色列表信息：
+    <voice>
+    {voice_names}
+    </voice>
+
+    匹配规则（必须严格遵守）：
+    1. 仅根据【原文内容】判断哪些角色实际出现；未在原文中出现的角色一律忽略，不输出。
+    2. 对于每个实际出现的角色，根据原文中体现的性格特征、语气风格、情绪倾向、年龄感等信息，推断该角色适合的音色类型。
+    3. 再根据音色库中每个音色的名称或描述，为角色挑选最匹配的音色。
+    4. 若某角色最匹配的音色与其他角色重复使用是不允许的（音色数量可能不足）。
+    5. 若确实存在无法匹配的角色（例如原文完全无语气风格线索），则该角色不输出。
+    6. 不得臆造原文中不存在的角色特征或音色特征。
+    7. 最终输出必须是一个标准 JSON 数组，且数组中的每个对象必须包含：
+       - "role_name": 角色名
+       - "voice_name": 匹配的音色名
+
+    输出格式要求：
+    - 严格输出 JSON 数组。
+    - 不得输出任何解释说明、自然语言、注释或多余内容。
+
+    示例输出（格式示例）：
+    [
+      {{ "role_name": "灰衣少年", "voice_name": "小王" }},
+      {{ "role_name": "白衣少年", "voice_name": "小正" }}
+    ]
+    """
+
     return textwrap.dedent(prompt)

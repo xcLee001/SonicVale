@@ -1,3 +1,4 @@
+import os
 import re
 
 from sqlalchemy import Sequence
@@ -22,7 +23,11 @@ class ProjectService:
         """
         project = self.repository.get_by_name(entity.name)
         if project:
-            return None
+            return None, "项目已存在"
+        # 判断项目根路径是否存在
+        if not os.path.exists(entity.project_root_path):
+            print("项目根路径不存在")
+            return  None, "项目根路径不存在"
         # 手动将entity转化为po
         po = ProjectPO(**entity.__dict__)
         res = self.repository.create(po)
@@ -32,7 +37,7 @@ class ProjectService:
         entity = ProjectEntity(**data)
 
         # 将po转化为entity
-        return entity
+        return entity, "创建成功"
 
 
     def get_project(self, project_id: int) -> ProjectEntity | None:

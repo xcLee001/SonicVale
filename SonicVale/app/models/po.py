@@ -18,6 +18,10 @@ class ProjectPO(Base):
     llm_model = Column(String(255), nullable=True)  # 指定模型
     tts_provider_id = Column(Integer, nullable=True)  # TTS提供商
     prompt_id = Column(Integer, nullable=True) # 关联的prompt
+    # 是否开启精准填充
+    is_precise_fill = Column(Integer, default=0, nullable=False)
+    # 项目根地址
+    project_root_path = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
@@ -165,6 +169,17 @@ class LLMProviderPO(Base):
     model_list = Column(JSON, nullable=True)                           # 支持的模型列表
     status = Column(Integer, default=1, nullable=False)               # 启用/禁用
 
+    # ✅ 自定义参数（默认包含 response_format、temperature、top_p）
+    custom_params = Column(
+        Text,
+        nullable=False,
+        default=lambda: {
+            "response_format": {"type": "json_object"},
+            "temperature": 0.7,
+            "top_p": 0.9
+
+        }
+    )
     # 时间戳
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc),

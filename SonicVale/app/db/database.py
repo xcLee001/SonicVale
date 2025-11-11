@@ -12,7 +12,7 @@ SQLALCHEMY_DATABASE_URL = f"sqlite:///{os.path.join(config_path, 'app_test.db')}
 
 # echo=True 会打印执行的 SQL 语句，调试用
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, echo=True
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, echo=False
 )
 
 # SessionLocal 用于依赖注入

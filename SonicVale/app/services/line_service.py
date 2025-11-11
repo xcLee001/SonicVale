@@ -100,7 +100,7 @@ class LineService:
         return self.repository.delete_all_by_chapter_id(chapter_id)
 
     # 单个台词新增
-    def add_new_line(self, line: LineCreateDTO,project_id,chapter_id,index,emotions_dict, strengths_dict):
+    def add_new_line(self, line: LineCreateDTO,project_id,chapter_id,index,emotions_dict, strengths_dict,audio_path):
     #     先判断角色是否存在
         role = self.role_repository.get_by_name(line.role_name,project_id)
         if role is None:
@@ -114,15 +114,16 @@ class LineService:
                                            chapter_id=chapter_id,line_order = index+1,emotion_id=emotion_id,strength_id=strength_id))
 
         # 新增台词,这里搞个audio_path
-        audio_path = os.path.join(getConfigPath(), str(project_id), str(chapter_id), "audio")
-        os.makedirs(audio_path, exist_ok=True)
+
+        # audio_path = os.path.join(getConfigPath(), str(project_id), str(chapter_id), "audio")
+        # os.makedirs(audio_path, exist_ok=True)
         res_path = os.path.join(audio_path, "id_"+str(res.id) + ".wav")
         self.repository.update(res.id, {"audio_path": res_path})
 
 
-    def update_init_lines(self, lines: list, project_id: object, chapter_id: object,emotions_dict, strengths_dict) -> None:
+    def update_init_lines(self, lines: list, project_id: object, chapter_id: object,emotions_dict, strengths_dict,audio_path) -> None:
         for index, line in enumerate(lines):
-            self.add_new_line(line,project_id,chapter_id,index,emotions_dict, strengths_dict)
+            self.add_new_line(line,project_id,chapter_id,index,emotions_dict, strengths_dict,audio_path)
 
     # 获取章节下所有台词
 

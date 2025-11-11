@@ -55,7 +55,7 @@ def create_project(dto: ProjectCreateDTO, service: ProjectService = Depends(get_
         entity = ProjectEntity(**dto.__dict__)
 
         # 调用 Service 创建项目（返回 True/False）
-        entityRes = service.create_project(entity)
+        entityRes,message = service.create_project(entity)
 
         # 返回统一 Response
         if entityRes is not None:
@@ -63,7 +63,7 @@ def create_project(dto: ProjectCreateDTO, service: ProjectService = Depends(get_
             res = ProjectResponseDTO(**entityRes.__dict__)
             return Res(data=res, code=200, message="创建成功")
         else:
-            return Res(data=None, code=400, message=f"项目 '{entity.name}' 已存在")
+            return Res(data=None, code=400, message=message)
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -112,13 +112,15 @@ def update_project(project_id: int, dto: ProjectCreateDTO, service: ProjectServi
                summary="删除项目",
                description="根据项目ID删除项目,并且级联删除项目下所有章节以及内容")
 def delete_project(project_id: int, service: ProjectService = Depends(get_service), chapter_service: ChapterService = Depends(get_chapter_service),role_service: RoleService = Depends(get_role_service)):
-    success = service.delete_project(project_id)
+
     # 级联删除项目所有相关内容，比如项目下所有章节以及内容
     entities = chapter_service.get_all_chapters(project_id)
     for entity in entities:
         chapter_service.delete_chapter(entity.id)
     #     删除project目录
-    project_path = os.path.join(getConfigPath(), str(project_id))
+    project = service.get_project(project_id)
+
+    project_path = os.path.join(project.project_root_path, str(project_id))
     if os.path.exists(project_path):
         shutil.rmtree(project_path)  # 删除整个文件夹及其所有内容
         print(f"已删除目录及内容: {project_path}")
@@ -129,6 +131,7 @@ def delete_project(project_id: int, service: ProjectService = Depends(get_servic
     roles = role_service.get_all_roles(project_id)
     for role in roles:
         role_service.delete_role(role.id)
+    success = service.delete_project(project_id)
     if success:
         return Res(data=None, code=200, message="删除成功")
     else:

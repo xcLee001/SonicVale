@@ -6,12 +6,13 @@ import re
 import time
 import random
 import openai
+from numba.cuda import stream
 
 from app.core.prompts import get_auto_fix_json_prompt
 
 
 class LLMEngine:
-    def __init__(self, api_key: str, base_url: str, model_name: str):
+    def __init__(self, api_key: str, base_url: str, model_name: str, custom_params: str):
         """
         api_key: LLM API Key
         base_url: OpenAI-compatible API URL（例如企业版/自建 LLM）
@@ -20,6 +21,12 @@ class LLMEngine:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")  # 去掉末尾斜杠
         self.model_name = model_name
+        # custom_params从string转为dict
+        # 先判断是否合格
+        custom_params = json.loads(custom_params)
+        if not isinstance(custom_params, dict):
+            raise ValueError("无效的")
+        self.custom_params = custom_params
         openai.api_key = api_key
         openai.api_base = self.base_url
 
@@ -38,13 +45,18 @@ class LLMEngine:
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
             timeout=3000,
-            response_format={"type": "json_object"}
+
+            **self.custom_params  # ✅ 合并自定义参数
+
         )
+        # print("LLM 创建：",response)
         return response.choices[0].message.content
     def generate_text(self, prompt: str, retries: int = 3, delay: float = 1.0) -> str:
         """
         流式生成：边生成边输出
         """
+        # 定义自定义参数
+
         for attempt in range(retries):
             try:
                 # 开启流式
@@ -53,7 +65,7 @@ class LLMEngine:
                     messages=[{"role": "user", "content": prompt}],
                     stream=True,
                     timeout=3000,
-                    response_format={"type": "json_object"}
+                    **self.custom_params  # ✅ 添加自定义参数
                 )
 
                 # 拼接 delta.content
@@ -86,6 +98,30 @@ class LLMEngine:
             res = self.generate_text(prompt)
             return json.loads(res)
 
+    def generate_smart_text(self, prompt: str) -> str:
+        """
+        :param prompt:
+        :return:
+        """
+        # 开启流式
+        response = openai.ChatCompletion.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": prompt}],
+            stream=True,
+            timeout=3000
+        )
+
+        # 拼接 delta.content
+        full_text = ""
+        for chunk in response:
+            if 'choices' in chunk and 'delta' in chunk['choices'][0]:
+                content = chunk['choices'][0]['delta'].get('content')
+                if content:
+                    print(content, end="", flush=True)  # 实时输出
+                    full_text += content
+
+        print("\n--- 输出完成 ---")
+        return full_text
 
 
 def main():
