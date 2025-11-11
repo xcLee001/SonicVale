@@ -1,7 +1,19 @@
-# 🎙️ 音谷 - AI 多角色多情绪配音平台
+<div align="center">
+
+# 音谷 - AI 多角色多情绪配音平台
+
+</div>
+<p align="center">
+
+<!-- 🌟 官方链接徽章 -->
+<a href="https://sw4s2hg7k5y.feishu.cn/wiki/WjbUw1t7JiWIa7k2pFXcxqSbnde?from=from_copylink">
+  <img src="https://img.shields.io/badge/飞书-使用教程-4285F4?logo=googleclassroom&logoColor=white" />
+</a>
+<img src="https://img.shields.io/badge/license-AGPLv3-blue?logo=gnu" />
+<img src="https://img.shields.io/badge/release-v1.0.6-brightgreen?logo=semver" />
+</p>
 
 > 一个开源的多角色、多情绪 AI 配音生成平台，支持小说、剧本、视频等内容的自动配音与导出。  
-> 免费使用，前后端代码全部开源。
 
 ---
 ## 📝 详细使用文档
@@ -17,11 +29,13 @@
   - 批量任务管理与导出
   - 支持自定义 LLM 接口选择与调用
   - 基于Index-TTS-2.0的多情绪TTS服务
+  - 支持精准的音频编辑功能，可以自定义删除音频片段或者添加静音片段。
+  - 支持自定义提示词，适配个性化拆分需求
 ## 🛠 技术栈
 - **前端**：Electron + Vue + Element Plus  
 - **后端**：FastAPI / Python
 - **AI 接口**：兼容 OpenAI API 协议的大模型  
-- **TTS 服务**：Cloud Native Build 平台（免费 H20 显卡支持）  
+- **TTS 服务**：IndexTTs-2 + Cloud Native Build 平台（免费 H20 显卡支持）/ 本地部署整合包
 
 ## 🚀 快速开始
 
@@ -43,7 +57,7 @@ cd SonicVale
 ```bash
 cd SonicVale
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8200
 ```
 
 
