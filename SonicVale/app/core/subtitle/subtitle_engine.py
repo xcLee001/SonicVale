@@ -3,7 +3,8 @@ from app.core.subtitle.JianYingASR import JianYingASR
 
 
 def generate_subtitle(audio_file,save_path):
-    asr = JianYingASR(audio_file)
+    # asr = JianYingASR(audio_file)
+    asr = BcutASR(audio_file)
     result = asr.run()
     result.to_srt(save_path)
     return result
