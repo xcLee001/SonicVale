@@ -49,7 +49,7 @@
 -->
 
       <div class="sider-info" v-if="!collapsed">
-        <div class="info-item">版本：v1.0.7</div>
+        <div class="info-item">版本：v1.0.7.fix</div>
         <div class="info-item">配音交流群：1060711739</div>
         <!-- 🔔 醒目声明 -->
         <div class="info-warning">
