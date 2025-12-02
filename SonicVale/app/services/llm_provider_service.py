@@ -94,8 +94,8 @@ class LLMProviderService:
 
         # 7. 校验返回是否为合法 JSON
         try:
-            res = res.replace("```json",'')
-            res = res.replace("```",'')
+            # res = res.replace("```json",'')
+            # res = res.replace("```",'')
             json.loads(res)
         except json.JSONDecodeError:
             return False, "LLM 返回的内容不是合法 JSON，请检查模型 / 提示词"
