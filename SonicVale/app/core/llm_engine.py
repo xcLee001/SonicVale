@@ -5,7 +5,7 @@ import json
 import re
 import time
 import random
-import openai
+from openai import OpenAI
 from numba.cuda import stream
 
 from app.core.prompts import get_auto_fix_json_prompt
@@ -17,18 +17,23 @@ class LLMEngine:
         api_key: LLM API Key
         base_url: OpenAI-compatible API URL（例如企业版/自建 LLM）
         model_name: 模型名称
+        custom_params: 自定义参数（JSON字符串）
         """
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")  # 去掉末尾斜杠
         self.model_name = model_name
+        
         # custom_params从string转为dict
-        # 先判断是否合格
         custom_params = json.loads(custom_params)
         if not isinstance(custom_params, dict):
-            raise ValueError("无效的")
+            raise ValueError("无效的 custom_params")
         self.custom_params = custom_params
-        openai.api_key = api_key
-        openai.api_base = self.base_url
+        
+        # 使用新版 OpenAI 客户端
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url=self.base_url
+        )
 
     def _extract_result_tag(self, text: str) -> str:
         """提取 <result> 标签内容"""
@@ -39,45 +44,41 @@ class LLMEngine:
 
     def generate_text_test(self, prompt: str) -> str:
         """
-        测试：生成结果并返回
+        测试：生成结果并返回（非流式）
         """
-        response = openai.ChatCompletion.create(
+        response = self.client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
             timeout=3000,
-
-            **self.custom_params  # ✅ 合并自定义参数
-
+            **self.custom_params
         )
-        # print("LLM 创建：",response)
         return response.choices[0].message.content
     def generate_text(self, prompt: str, retries: int = 3, delay: float = 1.0) -> str:
         """
         流式生成：边生成边输出
         """
-        # 定义自定义参数
-
         for attempt in range(retries):
             try:
                 # 开启流式
-                response = openai.ChatCompletion.create(
+                stream = self.client.chat.completions.create(
                     model=self.model_name,
                     messages=[{"role": "user", "content": prompt}],
                     stream=True,
                     timeout=3000,
-                    **self.custom_params  # ✅ 添加自定义参数
+                    **self.custom_params
                 )
-
+                
                 # 拼接 delta.content
                 full_text = ""
-                for chunk in response:
-                    if 'choices' in chunk and 'delta' in chunk['choices'][0]:
-                        content = chunk['choices'][0]['delta'].get('content')
+                for chunk in stream:
+                    if chunk.choices and len(chunk.choices) > 0:
+                        delta = chunk.choices[0].delta
+                        content = delta.content if hasattr(delta, 'content') else None
                         if content:
                             print(content, end="", flush=True)  # 实时输出
                             full_text += content
 
-                print("\n--- 输出完成 ---")
+                print()  # 换行
                 return full_text
 
             except Exception as e:
@@ -86,25 +87,30 @@ class LLMEngine:
                     time.sleep(sleep_time)
                 else:
                     raise e
-    # json输出问题解决
     def save_load_json(self, json_str: str):
-        #先加载json
+        """解析JSON，支持自动提取<result>标签内容"""
+        # 先尝试提取 <result> 标签内容
         try:
-            json_obj = json.loads(json_str)
-            return json_obj
+            json_str = self._extract_result_tag(json_str)
+        except ValueError:
+            # 没有 <result> 标签，直接使用原文本
+            pass
+        
+        # 尝试加载json
+        try:
+            return json.loads(json_str)
         except json.JSONDecodeError:
-            print("JSON 解析错误，尝试修复")
+            # JSON解析失败，尝试让LLM修复
             prompt = get_auto_fix_json_prompt(json_str)
             res = self.generate_text(prompt)
-            return json.loads(res)
+            # 递归调用，修复后的结果也可能包含 <result> 标签
+            return self.save_load_json(res)
 
     def generate_smart_text(self, prompt: str) -> str:
         """
-        :param prompt:
-        :return:
+        智能文本生成（流式）
         """
-        # 开启流式
-        response = openai.ChatCompletion.create(
+        stream = self.client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
             stream=True,
@@ -113,35 +119,13 @@ class LLMEngine:
 
         # 拼接 delta.content
         full_text = ""
-        for chunk in response:
-            if 'choices' in chunk and 'delta' in chunk['choices'][0]:
-                content = chunk['choices'][0]['delta'].get('content')
+        for chunk in stream:
+            if chunk.choices and len(chunk.choices) > 0:
+                delta = chunk.choices[0].delta
+                content = delta.content if hasattr(delta, 'content') else None
                 if content:
-                    print(content, end="", flush=True)  # 实时输出
+                    print(content, end="", flush=True)
                     full_text += content
 
-        print("\n--- 输出完成 ---")
+        print()  # 换行
         return full_text
-
-
-def main():
-    # 测试配置（可以用你自己的 API）
-    api_key = "sk-89c8b48798b6422fa8e9b59664dabf1e"
-    api_url = "https://api.deepseek.com"
-    model_name = "deepseek-reasoner"
-
-    llm = LLMEngine(api_key, api_url, model_name)
-
-    # 测试 prompt
-    prompt = "输出<result>标签的结果，例如：<result>这是测试内容</result>。问题：你好，请问你是谁"
-
-    try:
-        result = llm.generate_text(prompt)
-        print("LLM 返回结果（提取 <result> 标签内容）：")
-        print(result)
-    except Exception as e:
-        print("调用 LLM 出错：", e)
-
-
-if __name__ == "__main__":
-    main()
