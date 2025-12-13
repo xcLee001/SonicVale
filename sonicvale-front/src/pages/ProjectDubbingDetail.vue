@@ -130,6 +130,19 @@
             <!-- 主区域 -->
 
             <el-main class="content">
+                <!-- 未选择章节时显示提示 -->
+                <div v-if="!activeChapterId" class="no-chapter-placeholder">
+                    <el-empty description="请先在左侧选择一个章节" :image-size="160">
+                        <template #image>
+                            <el-icon :size="80" color="#c0c4cc">
+                                <Document />
+                            </el-icon>
+                        </template>
+                    </el-empty>
+                </div>
+
+                <!-- 已选择章节时显示内容 -->
+                <template v-else>
                 <!-- 章节正文 -->
                 <el-card class="chapter-card">
                     <div class="chapter-card-head">
@@ -349,6 +362,7 @@
 
                     </el-tab-pane>
                 </el-tabs>
+                </template>
             </el-main>
 
         </el-container>
@@ -961,8 +975,8 @@ async function loadChapters() {
     const res = await chapterAPI.getChaptersByProject(projectId)
     chapters.value = res?.code === 200 ? (res.data || []) : []
     stats.value.chapterCount = chapters.value.length
-    if (!activeChapterId.value && chapters.value[0]) {
-        activeChapterId.value = chapters.value[0].id
+    // 不再自动选择章节，由 restoreLastChapter 处理
+    if (activeChapterId.value && chapters.value.find(c => c.id === activeChapterId.value)) {
         await loadLines()
         await loadChapterDetail(activeChapterId.value)
     }
@@ -3084,11 +3098,12 @@ function restoreLastChapter() {
     const last = map[projectId];
 
     console.log('恢复最后章节', map, last);
-    if (last) {
+    if (last && chapters.value.find(c => c.id === last)) {
+        // 只有当上次选择的章节仍然存在时才恢复
         activeChapterId.value = last;
-    }
-    else {
-        activeChapterId.value = chapters.value?.[0]?.id || null;
+    } else {
+        // 不自动选择章节，让用户手动选择
+        activeChapterId.value = null;
     }
     console.log('最终选中章节', activeChapterId.value);
 }
@@ -3792,5 +3807,17 @@ function restoreLastChapter() {
     width: 6px;
     height: 100%;
     cursor: col-resize;
+}
+
+/* 未选择章节的占位提示 */
+.no-chapter-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 400px;
+    background: #fafafa;
+    border-radius: 12px;
+    color: #909399;
 }
 </style>
