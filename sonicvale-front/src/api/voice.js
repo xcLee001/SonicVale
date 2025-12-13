@@ -54,3 +54,16 @@ export function importVoices(tts_provider_id, zip_path, target_dir) {
     target_dir
   })
 }
+
+// 处理音色参考音频
+export function processVoiceAudio(audio_path, params) {
+  return request.post('/voices/process-audio', {
+    audio_path,
+    speed: params.speed,
+    volume: params.volume,
+    start_ms: params.start_ms,
+    end_ms: params.end_ms,
+    silence_sec: params.silence_sec,
+    current_ms: params.current_ms
+  })
+}

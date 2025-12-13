@@ -7,6 +7,8 @@ from typing import List, Tuple
 
 from sqlalchemy import Sequence
 
+from app.core.audio_engin import AudioProcessor
+from app.dto.voice_dto import VoiceAudioProcessDTO
 from app.entity.voice_entity import VoiceEntity
 from app.models.po import VoicePO
 from app.repositories.multi_emotion_voice_repository import MultiEmotionVoiceRepository
@@ -199,3 +201,43 @@ class VoiceService:
                 success_count += 1
         
         return success_count, skipped_count, skipped_names
+
+    def process_audio(self, dto: VoiceAudioProcessDTO) -> bool:
+        """处理音色参考音频
+        - 变速、音量调整
+        - 裁剪/删除区间
+        - 添加/裁剪末尾静音
+        - 指定位置插入静音
+        """
+        audio_path = dto.audio_path
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(audio_path)
+        
+        processor = AudioProcessor(audio_path)
+        
+        start_ms = dto.start_ms
+        end_ms = dto.end_ms
+        speed = dto.speed
+        volume = dto.volume
+        current_ms = dto.current_ms
+        silence_sec = dto.silence_sec
+        
+        # ---------- (1) 优先裁剪 ----------
+        if start_ms is not None and end_ms is not None and end_ms > start_ms:
+            processor.cut(start_ms, end_ms)
+        
+        # ---------- (2) 插入静音 ----------
+        elif current_ms is not None and silence_sec is not None and silence_sec != 0:
+            processor.insert_silence(current_ms, silence_sec)
+        
+        # ---------- (3) 末尾静音/裁剪 ----------
+        elif current_ms is None and silence_sec is not None and silence_sec != 0:
+            processor.append_silence(silence_sec)
+        
+        # ---------- (4) 音量 + 变速 ----------
+        if speed != 1.0:
+            processor.change_speed(speed)
+        if volume != 1.0:
+            processor.change_volume(volume)
+        
+        return True

@@ -73,7 +73,7 @@
       <el-table-column prop="created_at" label="创建时间" width="180" />
       <el-table-column prop="updated_at" label="更新时间" width="180" />
 
-      <el-table-column label="操作" width="180" fixed="right" align="center">
+      <el-table-column label="操作" width="240" fixed="right" align="center">
   <template #default="{ row }">
     <div class="flex justify-center gap-2">
       <el-button 
@@ -82,6 +82,14 @@
         plain 
         @click="openDialog(row)">
         编辑
+      </el-button>
+      <el-button 
+        type="warning" 
+        size="small" 
+        plain
+        :disabled="!row.reference_path"
+        @click="openAudioEditor(row)">
+        音频编辑
       </el-button>
       <el-popconfirm
         title="确认删除该音色？"
@@ -140,7 +148,7 @@
           <div class="pick-line">
             <el-input v-model="form.reference_path" placeholder="请选择本地音频文件" readonly style="width:420px" />
             <el-button @click="pickLocalAudioForBase" style="margin-left:8px">选择文件</el-button>
-            <el-button v-if="form.reference_path" type="danger" link @click="form.reference_path = ''">清除</el-button>
+            <el-button v-if="form.reference_path" type="danger" link @click="clearReferencePath">清除</el-button>
           </div>
 
           <div class="preview" v-if="form.reference_path">
@@ -156,6 +164,27 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitForm">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 弹窗：音频编辑 -->
+    <el-dialog title="音频编辑" v-model="audioEditorVisible" width="900px" :close-on-click-modal="false">
+      <div class="audio-editor-info" v-if="editingVoice">
+        <span class="audio-editor-label">音色名称：</span>
+        <span class="audio-editor-value">{{ editingVoice.name }}</span>
+      </div>
+      <div class="wave-editor-wrap" v-if="editingVoice?.reference_path && waveEditorKey">
+        <WaveCellPro
+          :key="waveEditorKey"
+          :src="editingVoice.reference_path"
+          :speed="1.0"
+          :volume2x="1.0"
+          @confirm="handleWaveConfirm"
+          @ready="handleWaveReady"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="audioEditorVisible = false">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -185,11 +214,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Headset } from '@element-plus/icons-vue'
-import { createVoice, fetchVoicesByTTS, updateVoice, deleteVoice, exportVoices, importVoices } from '../api/voice'
+import { createVoice, fetchVoicesByTTS, updateVoice, deleteVoice, exportVoices, importVoices, processVoiceAudio } from '../api/voice'
 import { fetchTTSProviders } from '../api/provider'
+import WaveCellPro from '../components/WaveCellPro.vue'
 
 
 const defaultTags = ref([
@@ -245,7 +275,34 @@ audioPlayer.addEventListener('ended', () => {
 })
 
 const dialogVisible = ref(false)
-watch(dialogVisible, v => { if (!v) audioPlayer.pause() })
+watch(dialogVisible, v => { 
+  if (!v) {
+    audioPlayer.pause()
+  }
+})
+
+// ====== 独立音频编辑弹窗 ======
+const audioEditorVisible = ref(false)
+const editingVoice = ref(null)
+
+watch(audioEditorVisible, v => {
+  if (!v) {
+    audioPlayer.pause()
+    waveEditorKey.value = null
+    editingVoice.value = null
+  }
+})
+
+function openAudioEditor(row) {
+  if (!row.reference_path) {
+    ElMessage.warning('该音色没有参考音频')
+    return
+  }
+  audioPlayer.pause()
+  editingVoice.value = row
+  waveEditorKey.value = Date.now()
+  audioEditorVisible.value = true
+}
 
 // 表单
 const formRef = ref(null)
@@ -310,6 +367,44 @@ async function pickLocalAudioForBase() {
   const p = await native?.pickAudio?.()
   if (!p) return
   form.value.reference_path = p
+}
+
+function clearReferencePath() {
+  form.value.reference_path = ''
+}
+
+// ====== 音频编辑器相关 ======
+const waveEditorKey = ref(null)
+
+function handleWaveReady(ws) {
+  console.log('WaveCellPro ready', ws)
+}
+
+// 处理音频编辑确认
+async function handleWaveConfirm(payload) {
+  if (!editingVoice.value?.reference_path) return
+  
+  try {
+    const res = await processVoiceAudio(editingVoice.value.reference_path, {
+      speed: payload.speed,
+      volume: payload.volume,
+      start_ms: payload.start_ms,
+      end_ms: payload.end_ms,
+      silence_sec: payload.silence_sec,
+      current_ms: payload.current_ms
+    })
+    
+    if (res.code === 200) {
+      ElMessage.success('音频处理完成')
+      // 刷新编辑器
+      waveEditorKey.value = Date.now()
+    } else {
+      ElMessage.error(res.message || '音频处理失败')
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('音频处理失败')
+  }
 }
 
 function toFileUrl(p) {
@@ -560,5 +655,26 @@ async function confirmImport() {
   font-size: 12px;
   color: #909399;
   margin-top: 4px;
+}
+.wave-editor-wrap {
+  padding: 12px;
+  background: #f9fafc;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+.audio-editor-info {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+.audio-editor-label {
+  color: #909399;
+  font-size: 13px;
+}
+.audio-editor-value {
+  color: #303133;
+  font-weight: 600;
+  font-size: 14px;
 }
 </style>

@@ -43,3 +43,14 @@ class VoiceImportResultDTO(BaseModel):
     skipped_count: int
     skipped_names: List[str]
 
+
+class VoiceAudioProcessDTO(BaseModel):
+    """音色参考音频处理DTO"""
+    audio_path: str
+    speed: Optional[float] = 1.0
+    volume: Optional[float] = 1.0
+    start_ms: Optional[int] = None
+    end_ms: Optional[int] = None
+    silence_sec: Optional[float] = 0.0
+    current_ms: Optional[int] = None
+
