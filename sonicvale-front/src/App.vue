@@ -6,7 +6,7 @@
       <div class="logo">
         <span class="logo-emoji">🎙️</span>
         <transition name="fade">
-          <span v-if="!collapsed" class="logo-text">音之谷配音平台</span>
+          <span v-if="!collapsed" class="logo-text">音谷配音平台</span>
         </transition>
       </div>
 
@@ -41,8 +41,9 @@
       <!-- 警告： -->
       <!--
   ================================================================
-  🎙️ 音之谷配音平台
-  作者：音之谷 Studio
+  🎙️ 音谷配音平台
+  作者：lxc
+
   QQ：1428390267
   本软件完全免费
   ================================================================
