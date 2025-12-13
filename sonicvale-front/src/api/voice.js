@@ -37,3 +37,20 @@ export function updateVoice(id, payload) {
 export function deleteVoice(id) {
   return request.delete(`/voices/${id}`)
 }
+
+// 导出音色库
+export function exportVoices(tts_provider_id, export_path) {
+  return request.post('/voices/export', {
+    tts_provider_id,
+    export_path
+  })
+}
+
+// 导入音色库
+export function importVoices(tts_provider_id, zip_path, target_dir) {
+  return request.post('/voices/import', {
+    tts_provider_id,
+    zip_path,
+    target_dir
+  })
+}

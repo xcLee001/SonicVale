@@ -1,12 +1,13 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.response import Res
 from app.db.database import get_db
 from app.dto.tts_provider_dto import TTSProviderResponseDTO
-from app.dto.voice_dto import VoiceResponseDTO, VoiceCreateDTO
+from app.dto.voice_dto import VoiceResponseDTO, VoiceCreateDTO, VoiceExportDTO, VoiceImportDTO, VoiceImportResultDTO
 from app.entity.voice_entity import VoiceEntity
 from app.repositories.multi_emotion_voice_repository import MultiEmotionVoiceRepository
 
@@ -93,7 +94,7 @@ def update_voice(voice_id: int, dto: VoiceCreateDTO, voice_service: VoiceService
         return Res(data=None, code=400, message="修改失败")
 
 
-# 根据id，删除
+# 根据 id，删除
 @router.delete("/{voice_id}", response_model=Res,
                summary="删除音色",
                description="根据音色id删除音色信息")
@@ -103,6 +104,44 @@ def delete_voice(voice_id: int, voice_service: VoiceService = Depends(get_voice_
         return Res(data=None, code=200, message="删除成功")
     else:
         return Res(data=None, code=400, message="删除失败或音色不存在")
+
+
+@router.post("/export", response_model=Res[str],
+             summary="导出音色库",
+             description="将指定TTS供应商下的所有音色打包到zip文件")
+def export_voices(dto: VoiceExportDTO, voice_service: VoiceService = Depends(get_voice_service)):
+    """导出音色库到zip文件"""
+    try:
+        result = voice_service.export_voices(dto.tts_provider_id, dto.export_path)
+        if result:
+            return Res(data=result, code=200, message="导出成功")
+        else:
+            return Res(data=None, code=400, message="没有可导出的音色")
+    except Exception as e:
+        return Res(data=None, code=500, message=f"导出失败: {str(e)}")
+
+
+@router.post("/import", response_model=Res[VoiceImportResultDTO],
+             summary="导入音色库",
+             description="从zip文件导入音色库，将音频文件复制到指定目录，已存在的音色会跳过")
+def import_voices(dto: VoiceImportDTO, voice_service: VoiceService = Depends(get_voice_service)):
+    """从zip文件导入音色库"""
+    try:
+        success_count, skipped_count, skipped_names = voice_service.import_voices(
+            dto.tts_provider_id, dto.zip_path, dto.target_dir
+        )
+        result = VoiceImportResultDTO(
+            success_count=success_count,
+            skipped_count=skipped_count,
+            skipped_names=skipped_names
+        )
+        return Res(data=result, code=200, message=f"导入完成：成功{success_count}个，跳过{skipped_count}个")
+    except FileNotFoundError as e:
+        return Res(data=None, code=404, message=str(e))
+    except ValueError as e:
+        return Res(data=None, code=400, message=str(e))
+    except Exception as e:
+        return Res(data=None, code=500, message=f"导入失败: {str(e)}")
 
 
 # tts_provider的查询和修改

@@ -7,6 +7,8 @@
           <el-option v-for="t in ttsProviders" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <el-button type="primary" :disabled="!selectedTTS" @click="openDialog()">新增音色</el-button>
+        <el-button type="success" :disabled="!selectedTTS || voices.length === 0" @click="handleExport">导出音色库</el-button>
+        <el-button type="warning" :disabled="!selectedTTS" @click="handleImport">导入音色库</el-button>
       </div>
     </div>
 
@@ -156,6 +158,29 @@
         <el-button type="primary" @click="submitForm">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 弹窗：导入音色库 -->
+    <el-dialog title="导入音色库" v-model="importDialogVisible" width="600px">
+      <el-form :model="importForm" label-width="120px">
+        <el-form-item label="音色库文件">
+          <div class="pick-line">
+            <el-input v-model="importForm.zipPath" placeholder="请选择音色库zip文件" readonly style="flex:1" />
+            <el-button @click="pickImportZip" style="margin-left:8px">选择文件</el-button>
+          </div>
+        </el-form-item>
+        <el-form-item label="音色保存目录">
+          <div class="pick-line">
+            <el-input v-model="importForm.targetDir" placeholder="音色文件保存目录" style="flex:1" />
+            <el-button @click="pickImportDir" style="margin-left:8px">选择目录</el-button>
+          </div>
+          <div class="form-hint">导入的音色文件将保存到此目录</div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!importForm.zipPath || !importForm.targetDir" @click="confirmImport">确认导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -163,7 +188,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Headset } from '@element-plus/icons-vue'
-import { createVoice, fetchVoicesByTTS, updateVoice, deleteVoice } from '../api/voice'
+import { createVoice, fetchVoicesByTTS, updateVoice, deleteVoice, exportVoices, importVoices } from '../api/voice'
 import { fetchTTSProviders } from '../api/provider'
 
 
@@ -345,6 +370,126 @@ function handleTagChange() {
   }, 0)
 }
 
+// ====== 导出音色库 ======
+async function handleExport() {
+  if (!selectedTTS.value) {
+    ElMessage.warning('请先选择 TTS 引擎')
+    return
+  }
+  if (voices.value.length === 0) {
+    ElMessage.warning('当前没有可导出的音色')
+    return
+  }
+
+  try {
+    // 调用 native 选择保存路径
+    const savePath = await native?.saveFile?.({
+      title: '导出音色库',
+      defaultPath: 'voices_export.zip',
+      filters: [{ name: 'ZIP 文件', extensions: ['zip'] }]
+    })
+    
+    if (!savePath) {
+      return // 用户取消
+    }
+
+    const res = await exportVoices(selectedTTS.value, savePath)
+    if (res.code === 200) {
+      ElMessage.success('导出成功：' + savePath)
+    } else {
+      ElMessage.error(res.message || '导出失败')
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('导出失败')
+  }
+}
+
+// ====== 导入音色库弹窗 ======
+const importDialogVisible = ref(false)
+const importForm = ref({
+  zipPath: '',
+  targetDir: ''
+})
+
+// 获取默认音色保存目录
+function getDefaultVoiceDir() {
+  // 默认为用户目录下的 SonicVale/voices
+  const userHome = native?.getUserHome?.() || ''
+  return userHome ? `${userHome}/SonicVale/voices` : ''
+}
+
+// 选择导入的zip文件
+async function pickImportZip() {
+  const zipPath = await native?.pickFile?.({
+    title: '选择音色库文件',
+    filters: [{ name: 'ZIP 文件', extensions: ['zip'] }]
+  })
+  if (zipPath) {
+    importForm.value.zipPath = zipPath
+  }
+}
+
+// 选择导入目标目录
+async function pickImportDir() {
+  const dir = await native?.pickDirectory?.({
+    title: '选择音色保存目录'
+  })
+  if (dir) {
+    importForm.value.targetDir = dir
+  }
+}
+
+// 打开导入弹窗
+async function handleImport() {
+  if (!selectedTTS.value) {
+    ElMessage.warning('请先选择 TTS 引擎')
+    return
+  }
+  
+  // 设置默认值
+  importForm.value = {
+    zipPath: '',
+    targetDir: getDefaultVoiceDir()
+  }
+  importDialogVisible.value = true
+}
+
+// 确认导入
+async function confirmImport() {
+  if (!importForm.value.zipPath) {
+    ElMessage.warning('请选择音色库文件')
+    return
+  }
+  if (!importForm.value.targetDir) {
+    ElMessage.warning('请设置音色保存目录')
+    return
+  }
+
+  try {
+    const res = await importVoices(
+      selectedTTS.value, 
+      importForm.value.zipPath, 
+      importForm.value.targetDir
+    )
+    if (res.code === 200) {
+      const data = res.data
+      let msg = `导入完成：成功 ${data.success_count} 个`
+      if (data.skipped_count > 0) {
+        msg += `，跳过 ${data.skipped_count} 个（名称已存在）`
+      }
+      ElMessage.success(msg)
+      importDialogVisible.value = false
+      await loadVoices() // 刷新列表
+    } else {
+      ElMessage.error(res.message || '导入失败')
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('导入失败')
+  }
+}
+
 </script>
 
 <style scoped>
@@ -410,5 +555,10 @@ function handleTagChange() {
 }
 .mb8 {
   margin-bottom: 8px;
+}
+.form-hint {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
 }
 </style>

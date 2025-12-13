@@ -1,3 +1,10 @@
+import json
+import os
+import shutil
+import tempfile
+import zipfile
+from typing import List, Tuple
+
 from sqlalchemy import Sequence
 
 from app.entity.voice_entity import VoiceEntity
@@ -79,3 +86,116 @@ class VoiceService:
         res = self.repository.delete(voice_id)
         self.multi_emotion_voice_repository.delete_multi_emotion_voice_by_voice_id(voice_id)
         return res
+
+    def export_voices(self, tts_provider_id: int, export_path: str) -> str:
+        """导出音色库到zip文件
+        - 获取所有音色
+        - 将音色信息和对应的音频文件打包到zip
+        - 返回zip文件路径
+        """
+        voices = self.get_all_voices(tts_provider_id)
+        if not voices:
+            return None
+
+        # 确保导出目录存在
+        os.makedirs(os.path.dirname(export_path) if os.path.dirname(export_path) else ".", exist_ok=True)
+
+        # 创建zip文件
+        with zipfile.ZipFile(export_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # 准备音色元数据
+            voices_metadata = []
+            
+            for voice in voices:
+                voice_data = {
+                    "name": voice.name,
+                    "description": voice.description,
+                    "is_multi_emotion": voice.is_multi_emotion,
+                    "reference_file": None
+                }
+                
+                # 如果有参考音频文件，添加到zip
+                if voice.reference_path and os.path.exists(voice.reference_path):
+                    # 保持原文件名
+                    file_name = os.path.basename(voice.reference_path)
+                    # 使用音色名称作为子目录，避免文件名冲突
+                    archive_path = f"voices/{voice.name}/{file_name}"
+                    zipf.write(voice.reference_path, archive_path)
+                    voice_data["reference_file"] = archive_path
+                
+                voices_metadata.append(voice_data)
+            
+            # 写入元数据文件
+            metadata_json = json.dumps(voices_metadata, ensure_ascii=False, indent=2)
+            zipf.writestr("voices_metadata.json", metadata_json)
+        
+        return export_path
+
+    def import_voices(self, tts_provider_id: int, zip_path: str, target_dir: str) -> Tuple[int, int, List[str]]:
+        """从zip文件导入音色库
+        - 解压zip文件
+        - 将音频文件复制到指定目录
+        - 添加音色到数据库（跳过重名的）
+        - 返回: (成功数量, 跳过数量, 跳过的音色名称列表)
+        """
+        if not os.path.exists(zip_path):
+            raise FileNotFoundError(f"zip文件不存在: {zip_path}")
+        
+        # 确保目标目录存在
+        os.makedirs(target_dir, exist_ok=True)
+        
+        success_count = 0
+        skipped_count = 0
+        skipped_names = []
+        
+        # 创建临时目录解压
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # 解压zip文件
+            with zipfile.ZipFile(zip_path, 'r') as zipf:
+                zipf.extractall(temp_dir)
+            
+            # 读取元数据
+            metadata_path = os.path.join(temp_dir, "voices_metadata.json")
+            if not os.path.exists(metadata_path):
+                raise ValueError("无效的音色库文件：缺少voices_metadata.json")
+            
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                voices_metadata = json.load(f)
+            
+            for voice_data in voices_metadata:
+                voice_name = voice_data["name"]
+                
+                # 检查是否已存在同名音色
+                existing = self.repository.get_by_name(voice_name, tts_provider_id)
+                if existing:
+                    skipped_count += 1
+                    skipped_names.append(voice_name)
+                    continue
+                
+                reference_path = None
+                
+                # 如果有参考音频文件，复制到目标目录
+                if voice_data.get("reference_file"):
+                    source_file = os.path.join(temp_dir, voice_data["reference_file"])
+                    if os.path.exists(source_file):
+                        # 使用音色名称作为文件名，保留原扩展名
+                        file_ext = os.path.splitext(source_file)[1]
+                        file_name = f"{voice_name}{file_ext}"
+                        dest_file = os.path.join(target_dir, file_name)
+                        shutil.copy2(source_file, dest_file)
+                        reference_path = dest_file
+                
+                # 创建音色实体
+                entity = VoiceEntity(
+                    name=voice_name,
+                    tts_provider_id=tts_provider_id,
+                    reference_path=reference_path,
+                    description=voice_data.get("description"),
+                    is_multi_emotion=voice_data.get("is_multi_emotion", 0)
+                )
+                
+                # 保存到数据库
+                po = VoicePO(**entity.__dict__)
+                self.repository.create(po)
+                success_count += 1
+        
+        return success_count, skipped_count, skipped_names

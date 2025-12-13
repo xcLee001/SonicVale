@@ -235,3 +235,38 @@ ipcMain.handle('dialog:selectDir', async () => {
   return result.filePaths[0]
 })
 
+// 保存文件对话框
+ipcMain.handle('dialog:save-file', async (event, options) => {
+  const { title, defaultPath, filters } = options || {}
+  const result = await dialog.showSaveDialog({
+    title: title || '保存文件',
+    defaultPath: defaultPath || '',
+    filters: filters || [{ name: '所有文件', extensions: ['*'] }]
+  })
+  if (result.canceled || !result.filePath) return null
+  return result.filePath
+})
+
+// 选择文件对话框
+ipcMain.handle('dialog:pick-file', async (event, options) => {
+  const { title, filters } = options || {}
+  const result = await dialog.showOpenDialog({
+    title: title || '选择文件',
+    properties: ['openFile'],
+    filters: filters || [{ name: '所有文件', extensions: ['*'] }]
+  })
+  if (result.canceled || !result.filePaths || !result.filePaths.length) return null
+  return result.filePaths[0]
+})
+
+// 选择目录对话框
+ipcMain.handle('dialog:pick-directory', async (event, options) => {
+  const { title } = options || {}
+  const result = await dialog.showOpenDialog({
+    title: title || '选择目录',
+    properties: ['openDirectory', 'createDirectory']
+  })
+  if (result.canceled || !result.filePaths || !result.filePaths.length) return null
+  return result.filePaths[0]
+})
+
