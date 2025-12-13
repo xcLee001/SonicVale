@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.response import Res
 from app.db.database import get_db
 from app.dto.tts_provider_dto import TTSProviderResponseDTO
-from app.dto.voice_dto import VoiceResponseDTO, VoiceCreateDTO, VoiceExportDTO, VoiceImportDTO, VoiceImportResultDTO, VoiceAudioProcessDTO
+from app.dto.voice_dto import VoiceResponseDTO, VoiceCreateDTO, VoiceExportDTO, VoiceImportDTO, VoiceImportResultDTO, VoiceAudioProcessDTO, VoiceCopyDTO
 from app.entity.voice_entity import VoiceEntity
 from app.repositories.multi_emotion_voice_repository import MultiEmotionVoiceRepository
 
@@ -86,6 +86,23 @@ def import_voices(dto: VoiceImportDTO, voice_service: VoiceService = Depends(get
         return Res(data=None, code=400, message=str(e))
     except Exception as e:
         return Res(data=None, code=500, message=f"导入失败: {str(e)}")
+
+
+@router.post("/copy", response_model=Res[VoiceResponseDTO],
+             summary="复制音色",
+             description="复制现有音色，包括音频文件，生成新的音色记录")
+def copy_voice(dto: VoiceCopyDTO, voice_service: VoiceService = Depends(get_voice_service)):
+    """复制音色"""
+    try:
+        new_voice = voice_service.copy_voice(
+            dto.source_voice_id, dto.new_name, dto.target_dir
+        )
+        res = VoiceResponseDTO(**new_voice.__dict__)
+        return Res(data=res, code=200, message="复制成功")
+    except ValueError as e:
+        return Res(data=None, code=400, message=str(e))
+    except Exception as e:
+        return Res(data=None, code=500, message=f"复制失败: {str(e)}")
 
 
 @router.get("/tts/{tts_provider_id}", response_model=Res[List[VoiceResponseDTO]],

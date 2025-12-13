@@ -73,7 +73,7 @@
       <el-table-column prop="created_at" label="创建时间" width="180" />
       <el-table-column prop="updated_at" label="更新时间" width="180" />
 
-      <el-table-column label="操作" width="240" fixed="right" align="center">
+      <el-table-column label="操作" width="320" fixed="right" align="center">
   <template #default="{ row }">
     <div class="flex justify-center gap-2">
       <el-button 
@@ -82,6 +82,13 @@
         plain 
         @click="openDialog(row)">
         编辑
+      </el-button>
+      <el-button 
+        type="success" 
+        size="small" 
+        plain
+        @click="openCopyDialog(row)">
+        复制
       </el-button>
       <el-button 
         type="warning" 
@@ -210,6 +217,29 @@
         <el-button type="primary" :disabled="!importForm.zipPath || !importForm.targetDir" @click="confirmImport">确认导入</el-button>
       </template>
     </el-dialog>
+
+    <!-- 弹窗：复制音色 -->
+    <el-dialog title="复制音色" v-model="copyDialogVisible" width="600px">
+      <el-form :model="copyForm" :rules="copyRules" ref="copyFormRef" label-width="120px">
+        <el-form-item label="原音色名称">
+          <el-input :value="copyForm.sourceName" disabled />
+        </el-form-item>
+        <el-form-item label="新音色名称" prop="newName">
+          <el-input v-model="copyForm.newName" placeholder="请输入新音色名称" />
+        </el-form-item>
+        <el-form-item label="保存目录">
+          <div class="pick-line">
+            <el-input v-model="copyForm.targetDir" placeholder="留空则保存到原音色同目录" style="flex:1" />
+            <el-button @click="pickCopyTargetDir" style="margin-left:8px">选择目录</el-button>
+          </div>
+          <div class="form-hint">留空则将新音色文件保存到原音色所在目录</div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="copyDialogVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!copyForm.newName" @click="confirmCopy">确认复制</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -217,7 +247,7 @@
 import { ref, onMounted, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Headset } from '@element-plus/icons-vue'
-import { createVoice, fetchVoicesByTTS, updateVoice, deleteVoice, exportVoices, importVoices, processVoiceAudio } from '../api/voice'
+import { createVoice, fetchVoicesByTTS, updateVoice, deleteVoice, exportVoices, importVoices, processVoiceAudio, copyVoice } from '../api/voice'
 import { fetchTTSProviders } from '../api/provider'
 import WaveCellPro from '../components/WaveCellPro.vue'
 
@@ -582,6 +612,67 @@ async function confirmImport() {
   } catch (e) {
     console.error(e)
     ElMessage.error('导入失败')
+  }
+}
+
+// ====== 复制音色弹窗 ======
+const copyDialogVisible = ref(false)
+const copyFormRef = ref(null)
+const copyForm = ref({
+  sourceId: null,
+  sourceName: '',
+  newName: '',
+  targetDir: ''
+})
+
+const copyRules = {
+  newName: [{ required: true, message: '请输入新音色名称', trigger: 'blur' }]
+}
+
+// 打开复制弹窗
+function openCopyDialog(row) {
+  copyForm.value = {
+    sourceId: row.id,
+    sourceName: row.name,
+    newName: row.name + '_复制',
+    targetDir: ''
+  }
+  copyDialogVisible.value = true
+}
+
+// 选择复制目标目录
+async function pickCopyTargetDir() {
+  const dir = await native?.pickDirectory?.({
+    title: '选择新音色保存目录'
+  })
+  if (dir) {
+    copyForm.value.targetDir = dir
+  }
+}
+
+// 确认复制
+async function confirmCopy() {
+  if (!copyForm.value.newName) {
+    ElMessage.warning('请输入新音色名称')
+    return
+  }
+
+  try {
+    const res = await copyVoice(
+      copyForm.value.sourceId,
+      copyForm.value.newName,
+      copyForm.value.targetDir || null
+    )
+    if (res.code === 200) {
+      ElMessage.success('复制成功')
+      copyDialogVisible.value = false
+      await loadVoices() // 刷新列表
+    } else {
+      ElMessage.error(res.message || '复制失败')
+    }
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('复制失败')
   }
 }
 

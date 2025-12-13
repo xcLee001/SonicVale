@@ -67,3 +67,12 @@ export function processVoiceAudio(audio_path, params) {
     current_ms: params.current_ms
   })
 }
+
+// 复制音色
+export function copyVoice(source_voice_id, new_name, target_dir = null) {
+  return request.post('/voices/copy', {
+    source_voice_id,
+    new_name,
+    target_dir
+  })
+}

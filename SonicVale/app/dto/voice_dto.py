@@ -54,3 +54,10 @@ class VoiceAudioProcessDTO(BaseModel):
     silence_sec: Optional[float] = 0.0
     current_ms: Optional[int] = None
 
+
+class VoiceCopyDTO(BaseModel):
+    """复制音色请求DTO"""
+    source_voice_id: int
+    new_name: str
+    target_dir: Optional[str] = None  # 为空则使用原音色同目录
+

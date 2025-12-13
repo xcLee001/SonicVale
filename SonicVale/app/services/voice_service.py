@@ -241,3 +241,60 @@ class VoiceService:
             processor.change_volume(volume)
         
         return True
+
+    def copy_voice(self, source_voice_id: int, new_name: str, target_dir: str = None) -> VoiceEntity:
+        """复制音色
+        - 获取源音色信息
+        - 复制音频文件到目标目录
+        - 创建新音色记录
+        - 返回新音色实体
+        """
+        # 获取源音色
+        source_voice = self.get_voice(source_voice_id)
+        if not source_voice:
+            raise ValueError("源音色不存在")
+        
+        # 检查新名称是否已存在
+        existing = self.repository.get_by_name(new_name, source_voice.tts_provider_id)
+        if existing:
+            raise ValueError(f"音色名称 '{new_name}' 已存在")
+        
+        new_reference_path = None
+        
+        # 处理音频文件复制
+        if source_voice.reference_path and os.path.exists(source_voice.reference_path):
+            # 确定目标目录
+            if target_dir and target_dir.strip():
+                dest_dir = target_dir.strip()
+            else:
+                # 使用源音频所在目录
+                dest_dir = os.path.dirname(source_voice.reference_path)
+            
+            # 确保目标目录存在
+            os.makedirs(dest_dir, exist_ok=True)
+            
+            # 获取源文件扩展名
+            file_ext = os.path.splitext(source_voice.reference_path)[1]
+            # 使用新音色名作为文件名
+            new_file_name = f"{new_name}{file_ext}"
+            new_reference_path = os.path.join(dest_dir, new_file_name)
+            
+            # 复制文件
+            shutil.copy2(source_voice.reference_path, new_reference_path)
+        
+        # 创建新音色实体
+        new_entity = VoiceEntity(
+            name=new_name,
+            tts_provider_id=source_voice.tts_provider_id,
+            reference_path=new_reference_path,
+            description=source_voice.description,
+            is_multi_emotion=source_voice.is_multi_emotion
+        )
+        
+        # 保存到数据库
+        po = VoicePO(**new_entity.__dict__)
+        res = self.repository.create(po)
+        
+        # 返回新建的音色实体
+        data = {k: v for k, v in res.__dict__.items() if not k.startswith("_")}
+        return VoiceEntity(**data)
