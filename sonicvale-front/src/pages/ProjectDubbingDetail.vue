@@ -3561,6 +3561,56 @@ function restoreLastChapter() {
 
 }
 
+/* 台词列表横向滚动条加粗 */
+.table-box :deep(.el-vl__horizontal) {
+    height: 14px !important;
+}
+
+.table-box :deep(.el-vl__horizontal .el-scrollbar__thumb) {
+    height: 12px !important;
+    border-radius: 6px;
+    background-color: rgba(144, 147, 153, 0.5);
+}
+
+.table-box :deep(.el-vl__horizontal .el-scrollbar__thumb:hover) {
+    background-color: rgba(144, 147, 153, 0.7);
+}
+
+/* 台词列表垂直滚动条加粗 */
+.table-box :deep(.el-vl__vertical) {
+    width: 14px !important;
+}
+
+.table-box :deep(.el-vl__vertical .el-scrollbar__thumb) {
+    width: 12px !important;
+    border-radius: 6px;
+    background-color: rgba(144, 147, 153, 0.5);
+}
+
+.table-box :deep(.el-vl__vertical .el-scrollbar__thumb:hover) {
+    background-color: rgba(144, 147, 153, 0.7);
+}
+
+/* 兼容 webkit 滚动条样式 */
+.table-box :deep(::-webkit-scrollbar) {
+    width: 14px;
+    height: 14px;
+}
+
+.table-box :deep(::-webkit-scrollbar-thumb) {
+    background-color: rgba(144, 147, 153, 0.5);
+    border-radius: 7px;
+}
+
+.table-box :deep(::-webkit-scrollbar-thumb:hover) {
+    background-color: rgba(144, 147, 153, 0.7);
+}
+
+.table-box :deep(::-webkit-scrollbar-track) {
+    background-color: #f1f1f1;
+    border-radius: 7px;
+}
+
 .lines-table {
     border-radius: 10px;
 }
