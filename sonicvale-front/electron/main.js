@@ -270,3 +270,27 @@ ipcMain.handle('dialog:pick-directory', async (event, options) => {
   return result.filePaths[0]
 })
 
+// 写入文件（用于音频下载等）
+ipcMain.handle('fs:write-file', async (event, { filePath, data }) => {
+  try {
+    // data 是 Uint8Array 转成的普通数组，需要转回 Buffer
+    const buffer = Buffer.from(data)
+    fs.writeFileSync(filePath, buffer)
+    return { success: true }
+  } catch (error) {
+    console.error('写入文件失败:', error)
+    return { success: false, error: error.message }
+  }
+})
+
+// 复制文件（用于音频下载等）
+ipcMain.handle('fs:copy-file', async (event, { sourcePath, destPath }) => {
+  try {
+    fs.copyFileSync(sourcePath, destPath)
+    return { success: true }
+  } catch (error) {
+    console.error('复制文件失败:', error)
+    return { success: false, error: error.message }
+  }
+})
+

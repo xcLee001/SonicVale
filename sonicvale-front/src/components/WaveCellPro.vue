@@ -13,6 +13,18 @@
         </template>
       </el-button>
 
+      <!-- 下载按钮 -->
+      <el-tooltip :content="ready ? '下载音频' : '暂无音频'" placement="top">
+        <el-button class="download-btn" :class="{ 'is-disabled': !ready }" circle size="mid" 
+          @click="downloadAudio" :disabled="!ready">
+          <template #icon>
+            <el-icon :size="18">
+              <Download />
+            </el-icon>
+          </template>
+        </el-button>
+      </el-tooltip>
+
 
       <span class="lbl">速度</span>
       <el-slider v-model="rate" :min="0.5" :max="2.0" :step="0.1" class="slider" />
@@ -39,8 +51,8 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
-import { ElMessageBox } from 'element-plus'
-import { VideoPlay, VideoPause } from '@element-plus/icons-vue'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { VideoPlay, VideoPause, Download } from '@element-plus/icons-vue'
 import WaveSurfer from 'wavesurfer.js'
 import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js'
 import Minimap from 'wavesurfer.js/dist/plugins/minimap.esm.js'
@@ -199,6 +211,75 @@ async function confirmProcess() {
     current_ms,
   })
 }
+
+// 下载音频
+async function downloadAudio() {
+  if (!props.src) {
+    ElMessage.warning('暂无可下载的音频')
+    return
+  }
+
+  try {
+    // 解析源路径（支持 file:// 和普通路径）
+    let sourcePath = props.src
+    if (sourcePath.startsWith('file:///')) {
+      // 解码 file:// URL 并提取路径
+      sourcePath = decodeURI(sourcePath.replace('file:///', ''))
+    } else if (sourcePath.startsWith('file://')) {
+      sourcePath = decodeURI(sourcePath.replace('file://', ''))
+    }
+    
+    // 去除可能存在的查询参数 (?v=xxx)
+    sourcePath = sourcePath.split('?')[0]
+    
+    // 提取文件名作为默认保存名
+    const fileName = sourcePath.split(/[\\/]/).pop() || 'audio.wav'
+    
+    // Electron 环境下使用原生保存对话框
+    if (window.native?.saveFile && window.native?.writeFile) {
+      const savePath = await window.native.saveFile({
+        title: '保存音频文件',
+        defaultPath: fileName,
+        filters: [{ name: '音频文件', extensions: ['wav', 'mp3', 'flac', 'ogg'] }]
+      })
+      
+      if (!savePath) {
+        return // 用户取消
+      }
+      
+      // 通过 fetch 获取音频数据
+      const response = await fetch(toUrl(props.src))
+      const arrayBuffer = await response.arrayBuffer()
+      const uint8Array = new Uint8Array(arrayBuffer)
+      
+      // 使用 Electron 的 writeFile 方法直接写入文件
+      const result = await window.native.writeFile(savePath, uint8Array)
+      
+      if (result.success) {
+        ElMessage.success('音频下载成功')
+      } else {
+        ElMessage.error('写入文件失败: ' + (result.error || '未知错误'))
+      }
+    } else {
+      // 非 Electron 环境，使用浏览器下载
+      const response = await fetch(toUrl(props.src))
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      ElMessage.success('音频下载成功')
+    }
+  } catch (error) {
+    console.error('下载音频失败:', error)
+    ElMessage.error('下载音频失败: ' + (error.message || '未知错误'))
+  }
+}
 </script>
 
 <style scoped>
@@ -232,5 +313,40 @@ async function confirmProcess() {
 .minimap {
   width: 100%;
   opacity: .85;
+}
+
+/* 下载按钮样式 */
+.download-btn {
+  background: linear-gradient(135deg, #74b9ff 0%, #a29bfe 100%);
+  border: none;
+  color: #fff;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(116, 185, 255, 0.35);
+}
+
+.download-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(116, 185, 255, 0.5);
+  background: linear-gradient(135deg, #a29bfe 0%, #74b9ff 100%);
+}
+
+.download-btn:active {
+  transform: scale(0.95);
+}
+
+.download-btn .el-icon {
+  color: #fff;
+}
+
+.download-btn.is-disabled {
+  background: #c0c4cc;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.download-btn.is-disabled:hover {
+  transform: none;
+  background: #c0c4cc;
+  box-shadow: none;
 }
 </style>

@@ -65,6 +65,22 @@ contextBridge.exposeInMainWorld('native', {
    * @returns {string}
    */
   getUserHome,
+  
+  /**
+   * 写入文件
+   * @param {string} filePath - 目标文件路径
+   * @param {Uint8Array} data - 文件数据
+   * @returns Promise<{success: boolean, error?: string}>
+   */
+  writeFile: (filePath, data) => ipcRenderer.invoke('fs:write-file', { filePath, data: Array.from(data) }),
+  
+  /**
+   * 复制文件
+   * @param {string} sourcePath - 源文件路径
+   * @param {string} destPath - 目标文件路径
+   * @returns Promise<{success: boolean, error?: string}>
+   */
+  copyFile: (sourcePath, destPath) => ipcRenderer.invoke('fs:copy-file', { sourcePath, destPath }),
 })
 
 
