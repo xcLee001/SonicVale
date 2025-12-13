@@ -257,7 +257,7 @@
                         <!-- ✅ 新版：虚拟滚动表格 -->
                         <div class="table-box">
                             <el-auto-resizer v-slot="{ height, width }">
-                                <el-table-v2 :data="displayedLines" :columns="lineColumns" :row-height="200" fixed
+                                <el-table-v2 :data="displayedLines" :columns="lineColumns" :row-height="150" fixed
                                     :width="width" :height="height" row-key="id" class="lines-table" />
                             </el-auto-resizer>
                         </div>

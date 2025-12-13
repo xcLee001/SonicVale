@@ -45,7 +45,6 @@
     </div>
 
     <div ref="container" class="wave" />
-    <div ref="minimap" class="minimap" />
   </div>
 </template>
 
@@ -55,7 +54,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { VideoPlay, VideoPause, Download } from '@element-plus/icons-vue'
 import WaveSurfer from 'wavesurfer.js'
 import Regions from 'wavesurfer.js/dist/plugins/regions.esm.js'
-import Minimap from 'wavesurfer.js/dist/plugins/minimap.esm.js'
+
 
 const props = defineProps({
   src: { type: String, required: true },     // 建议传 file://；否则会尝试转换
@@ -74,11 +73,9 @@ const emit = defineEmits([
 ])
 
 const container = ref(null)
-const minimap = ref(null)
 
 let ws = null
 let regionsPlugin = null
-let minimapPlugin = null
 const region = ref(null) // ← 关键：响应式
 
 const isPlaying = ref(false)
@@ -111,7 +108,6 @@ onMounted(async () => {
 
   // v7：registerPlugin 获取实例
   regionsPlugin = ws.registerPlugin(Regions.create({ dragSelection: true }))
-  minimapPlugin = ws.registerPlugin(Minimap.create({ container: minimap.value, height: 24 }))
 
   ws.on('ready', () => {
     ready.value = true
@@ -160,7 +156,7 @@ onBeforeUnmount(() => {
     emit('dispose', ws)
     ws && ws.destroy()
   }
-  finally { ws = null; regionsPlugin = null; minimapPlugin = null; region.value = null }
+  finally { ws = null; regionsPlugin = null; region.value = null }
 })
 
 // —— 实时预听：速度/音量 —— //
@@ -310,10 +306,7 @@ async function downloadAudio() {
   width: 100%;
 }
 
-.minimap {
-  width: 100%;
-  opacity: .85;
-}
+
 
 /* 下载按钮样式 */
 .download-btn {

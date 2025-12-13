@@ -49,8 +49,8 @@
 -->
 
       <div class="sider-info" v-if="!collapsed">
-        <div class="info-item">版本：v1.0.7.fix</div>
-        <div class="info-item">配音交流群：1060711739</div>
+        <div class="info-item">版本：v1.1.0</div>
+        <div class="info-item">配音交流群：575715633（如果群已经满，请按照申请提示进入其他群）</div>
         <!-- 🔔 醒目声明 -->
         <div class="info-warning">
           
