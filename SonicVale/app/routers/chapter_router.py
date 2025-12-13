@@ -308,11 +308,12 @@ async def import_lines(project_id: int,chapter_id: int,data:str=Form( ...),line_
     # 精准填充
     project = project_service.get_project(project_id)
     is_precise_fill = project.is_precise_fill
-    # 获取章节内容
-    content = chapter_service.get_chapter(chapter_id).text_content
-    if not content:
-        return Res(data=None, code=500, message="章节内容为空")
+    
     if is_precise_fill == 1:
+        # 获取章节内容
+        content = chapter_service.get_chapter(chapter_id).text_content
+        if not content:
+            return Res(data=None, code=500, message="章节内容为空")
         corrector = TextCorrectorFinal()
         lines_data = corrector.correct_ai_text(content, lines_data)
     lines_data = [LineInitDTO(**line) for line in lines_data]
