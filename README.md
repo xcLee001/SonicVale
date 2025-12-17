@@ -89,12 +89,17 @@ cd sonicvale-front
 npm install   # 安装依赖
 npm run start # 启动前端包括electron
 ```
+## Coffe
+如果您觉得我的项目对您有所帮助，欢迎您的赞助。您的支持将使我有更多的动力继续维护和改进这个项目。
+您可以通过扫描下面的二维码来请我喝杯咖啡：
 
+
+<img src="image/赞赏码.jpg" alt="赞赏码" width="220px" height="220px">
 
 ## 🎥 效果演示
 👉 [点击查看 B 站演示效果视频](https://www.bilibili.com/video/BV1tSpTz6EBH/)
 
-![alt text](image/image-12.png)
+
 ## 📷 截图
 
 LLM 配置界面
