@@ -94,7 +94,7 @@ npm run start # 启动前端包括electron
 您可以通过扫描下面的二维码来请我喝杯咖啡：
 
 
-<img src="image/赞赏码.jpg" alt="赞赏码" width="220px" height="220px">
+<img src="image/赞赏码.jpg" alt="赞赏码" width="320px" height="320px">
 
 ## 🎥 效果演示
 👉 [点击查看 B 站演示效果视频](https://www.bilibili.com/video/BV1tSpTz6EBH/)
