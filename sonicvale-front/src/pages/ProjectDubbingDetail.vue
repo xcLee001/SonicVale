@@ -3839,6 +3839,11 @@ function restoreLastChapter() {
     min-height: 60px;
 }
 
+:deep(.lines-table .el-textarea__inner) {
+    max-height: 132px;
+    overflow: auto;
+}
+
 :deep(.el-table-v2__cell) {
     padding: 4px 8px;
 }
