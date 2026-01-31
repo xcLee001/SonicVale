@@ -12,16 +12,17 @@
         </div>
 
         <!-- 项目卡片网格 -->
-        <el-row :gutter="40">
+        <el-row :gutter="20">
             <el-col v-for="item in projects" :key="item.id" :xs="24" :sm="12" :md="8" :lg="6" :xl="6"
                 style="margin-bottom:20px;">
-                <el-card shadow="hover" class="project-card">
-                    <!-- 删除按钮（悬浮右上角） -->
-                    <div class="delete-btn">
+                <el-card shadow="hover" class="project-card" :body-style="{ padding: '0px' }">
+                    <!-- 卡片头部 -->
+                    <div class="card-header">
+                        <h3 class="project-title" :title="item.name">{{ item.name }}</h3>
                         <el-popconfirm title="确认删除这个项目吗？" confirm-button-text="删除" cancel-button-text="取消"
                             @confirm="handleDelete(item.id)">
                             <template #reference>
-                                <el-button size="small" circle type="danger" plain>
+                                <el-button link type="danger" size="small">
                                     <el-icon>
                                         <Delete />
                                     </el-icon>
@@ -32,66 +33,48 @@
 
                     <!-- 项目信息 -->
                     <div class="project-card-body">
-                        <h3 class="project-title">{{ item.name }}</h3>
-                        <p class="project-desc">{{ item.description || '暂无描述' }}</p>
+                        <p class="project-desc" :title="item.description">{{ item.description || '暂无描述' }}</p>
 
-                        <div class="project-meta-list">
-                            <p v-if="item.llmProviderId" class="project-meta">
+                        <div class="project-meta-grid">
+                            <div v-if="item.llmProviderId" class="meta-item">
+                                <el-icon><Cpu /></el-icon>
+                                <span class="meta-label">LLM:</span>
+                                <span class="meta-value">{{ getLLMProviderName(item.llmProviderId) }}</span>
+                            </div>
+                            <div v-if="item.ttsProviderId" class="meta-item">
+                                <el-icon><Mic /></el-icon>
+                                <span class="meta-label">TTS:</span>
+                                <span class="meta-value">{{ getTTSProviderName(item.ttsProviderId) }}</span>
+                            </div>
+                            <div v-if="item.promptId" class="meta-item">
+                                <el-icon><Document /></el-icon>
+                                <span class="meta-label">提示词:</span>
+                                <span class="meta-value">{{ getPromptName(item.promptId) }}</span>
+                            </div>
+                            <div class="meta-item">
                                 <el-icon>
-                                    <Cpu />
-                                </el-icon> LLM 提供商：{{ getLLMProviderName(item.llmProviderId) }}
-                            </p>
-                            <p v-if="item.llmModel" class="project-meta">
-                                <el-icon>
-                                    <Cpu />
-                                </el-icon> LLM 模型：{{ item.llmModel }}
-                            </p>
-                            <p v-if="item.ttsProviderId" class="project-meta">
-                                <el-icon>
-                                    <Mic />
-                                </el-icon> TTS 引擎：{{ getTTSProviderName(item.ttsProviderId) }}
-                            </p>
-                            <p v-if="item.promptId" class="project-meta">
-                                <el-icon>
-                                    <Document />
-                                </el-icon> 提示词：{{ getPromptName(item.promptId) }}
-                            </p>
-                            <!-- ✅ 精确填充状态 + 图标 -->
-                            <p class="project-meta" :class="item.is_precise_fill == 1 ? 'precise-on' : 'precise-off'">
-                                <el-icon>
-                                    <CircleCheck v-if="item.is_precise_fill == 1" />
-                                    <CircleClose v-else />
+                                    <CircleCheck v-if="item.is_precise_fill == 1" class="precise-on" />
+                                    <CircleClose v-else class="precise-off" />
                                 </el-icon>
-                                精确填充：{{ item.is_precise_fill == 1 ? '开启' : '关闭' }}
-                            </p>
-
-                            <!-- 更新时间 -->
-                            <p class="project-meta">
-                                <el-icon>
-                                    <Clock />
-                                </el-icon> 创建时间：{{ new Date(item.createdAt).toLocaleString() }}
-                            </p>
-                            <p class="project-meta">
-                                <el-icon>
-                                    <Folder />
-                                </el-icon>
-                                根路径：{{ item.project_root_path }}
-                            </p>
-
-
-
+                                <span class="meta-label">精确填充:</span>
+                                <el-tag size="small" :type="item.is_precise_fill == 1 ? 'success' : 'info'" effect="plain">
+                                    {{ item.is_precise_fill == 1 ? '开启' : '关闭' }}
+                                </el-tag>
+                            </div>
                         </div>
 
-                        <!-- 操作按钮 -->
-                        <div class="project-actions">
-                            <el-button size="small" type="primary" round
+                        <div class="project-footer">
+                            <div class="time-info">
+                                <el-icon><Clock /></el-icon>
+                                <span>{{ new Date(item.createdAt).toLocaleDateString() }}</span>
+                            </div>
+                            <el-button type="primary" size="small" round
                                 @click="$router.push(`/projects/${item.id}/dubbing`)">
                                 🎙 继续配音
                             </el-button>
                         </div>
                     </div>
                 </el-card>
-
             </el-col>
         </el-row>
 
@@ -318,73 +301,113 @@ const pickRootDir = async () => {
 
 .project-card {
     border-radius: 12px;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.25s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 100%;
+    border: 1px solid #ebeef5;
 }
 
 .project-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    border-color: #409eff;
 }
 
-/* 删除按钮悬浮 */
-.delete-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 1;
-}
-
-.project-card-body {
-    padding: 12px;
+/* 卡片头部 */
+.card-header {
+    padding: 14px 16px;
     display: flex;
-    flex-direction: column;
-    height: 100%;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f0f2f5;
+    background-color: #fafafa;
 }
 
 .project-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     color: #303133;
-    margin: 0 0 6px 0;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
+.project-card-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 49px);
 }
 
 .project-desc {
-    font-size: 14px;
-    color: #606266;
-    line-height: 1.5;
-    margin-bottom: 10px;
-    min-height: 36px;
-}
-
-.project-meta-list {
-    flex: 1;
-    margin-top: 8px;
-}
-
-.project-meta {
     font-size: 13px;
     color: #909399;
-    margin: 2px 0;
-    display: flex;
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+    height: 40px;
     overflow: hidden;
-    align-items: center;
-    gap: 4px;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
-.project-actions {
-    text-align: right;
-    margin-top: 14px;
+.project-meta-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #606266;
+}
+
+.meta-item .el-icon {
+    font-size: 14px;
+    color: #909399;
+}
+
+.meta-label {
+    color: #909399;
+    min-width: 60px;
+}
+
+.meta-value {
+    color: #303133;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.project-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 12px;
+    border-top: 1px solid #f0f2f5;
+}
+
+.time-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #a8abb2;
 }
 
 .precise-on {
     color: #67C23A;
-    /* 绿色，表示开启 */
 }
 
 .precise-off {
     color: #F56C6C;
-    /* 红色，表示关闭 */
 }
 </style>

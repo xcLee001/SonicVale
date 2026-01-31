@@ -296,66 +296,51 @@
                         </div>
 
                         <div class="role-grid">
-
-                            <el-card v-for="r in displayedRoles" :key="r.id" class="role-card" shadow="hover">
-                                <!-- src/views/YourView.vue，角色卡片组件中 -->
-                                <div class="role-card-head">
-                                    <el-avatar :size="40">{{ r.name.slice(0, 1) }}</el-avatar>
-                                    <div class="role-meta">
-                                        <div class="role-title">{{ r.name }}</div>
-                                        <div class="role-desc ellipsis-2">{{ r.description || '—' }}</div>
+                            <el-card v-for="r in displayedRoles" :key="r.id" class="role-card" shadow="hover" :body-style="{ padding: '0px' }">
+                                <div class="card-header">
+                                    <div class="role-info-side">
+                                        <el-avatar :size="32" class="role-avatar">{{ r.name.slice(0, 1) }}</el-avatar>
+                                        <h4 class="role-title" :title="r.name">{{ r.name }}</h4>
                                     </div>
-                                    <!-- 新增：操作按钮 -->
                                     <div class="role-actions">
-                                        <el-tooltip content="重命名">
-                                            <el-button link @click="openRenameRole(r)">
+                                        <el-button link @click="openRenameRole(r)">
+                                            <el-icon><Edit /></el-icon>
+                                        </el-button>
+                                        <el-popconfirm title="确定删除该角色？" @confirm="deleteRole(r)">
+                                            <template #reference>
+                                                <el-button link type="danger">
+                                                    <el-icon><Delete /></el-icon>
+                                                </el-button>
+                                            </template>
+                                        </el-popconfirm>
+                                    </div>
+                                </div>
+
+                                <div class="card-body">
+                                    <p class="role-desc" :title="r.description">{{ r.description || '暂无备注' }}</p>
+                                    
+                                    <div class="bind-info">
+                                        <div class="voice-tag-side">
+                                            <el-tag v-if="getRoleVoiceName(r.id)" type="success" size="small" effect="plain">
+                                                {{ getRoleVoiceName(r.id) }}
+                                            </el-tag>
+                                            <el-tag v-else type="info" size="small" effect="plain">未绑定音色</el-tag>
+                                            
+                                            <el-button circle size="small" :disabled="!roleVoiceMap[r.id]"
+                                                @click="toggleVoicePlay(roleVoiceMap[r.id])"
+                                                class="play-btn">
                                                 <el-icon>
-                                                    <Edit />
+                                                    <VideoPause v-if="isPlaying && currentVoiceId === roleVoiceMap[r.id]" />
+                                                    <Headset v-else />
                                                 </el-icon>
                                             </el-button>
-                                        </el-tooltip>
-                                        <el-tooltip content="删除">
-                                            <el-popconfirm title="确定删除该角色？" @confirm="deleteRole(r)">
-                                                <template #reference>
-                                                    <el-button link type="danger"><el-icon>
-                                                            <Delete />
-                                                        </el-icon></el-button>
-                                                </template>
-                                            </el-popconfirm>
-                                        </el-tooltip>
+                                        </div>
+
+                                        <el-button type="primary" size="small" link @click="openVoiceDialog(r)">
+                                            {{ getRoleVoiceName(r.id) ? '更换' : '绑定' }}
+                                        </el-button>
                                     </div>
                                 </div>
-
-
-                                <div class="bind-row">
-                                    <!-- 左边：标签 + 试听 -->
-                                    <div class="bind-left">
-                                        <el-tag v-if="getRoleVoiceName(r.id)" type="danger">
-                                            {{ getRoleVoiceName(r.id) }}
-                                        </el-tag>
-                                        <el-tag v-else type="info">未绑定音色</el-tag>
-
-                                        <el-button circle plain :disabled="!roleVoiceMap[r.id]"
-                                            @click="toggleVoicePlay(roleVoiceMap[r.id])"
-                                            :title="isPlaying && currentVoiceId === roleVoiceMap[r.id] ? '暂停' : '试听音色'">
-                                            <el-icon>
-                                                <Headset />
-                                            </el-icon>
-                                        </el-button>
-
-                                    </div>
-
-                                    <!-- 右边：选择音色 -->
-                                    <div class="bind-right">
-                                        <el-button :type="getRoleVoiceName(r.id) ? 'primary' : 'danger'" size="small"
-                                            @click="openVoiceDialog(r)">
-                                            {{ getRoleVoiceName(r.id) ? '更换音色' : '绑定音色' }}
-                                        </el-button>
-
-                                    </div>
-                                </div>
-
-
                             </el-card>
                         </div>
 
@@ -3635,64 +3620,112 @@ function restoreLastChapter() {
     overflow-y: auto;
     padding: 12px;
     display: grid;
-    /* ✅ 保留 grid */
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
     box-sizing: border-box;
     min-height: 0;
-    /* ✅ 防止 flex 塌陷 */
 }
-
 
 .role-card {
     border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #ebeef5;
 }
 
-.role-card-head {
+.role-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+    border-color: #409eff;
+}
+
+.role-card .card-header {
+    padding: 12px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f0f2f5;
+    background-color: #fafafa;
+}
+
+.role-info-side {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 10px;
-}
-
-.role-meta {
-    flex: 1;
     min-width: 0;
 }
 
-.role-title {
-    font-weight: 700;
+.role-avatar {
+    background-color: #409eff;
+    color: #fff;
+    font-weight: bold;
+    flex-shrink: 0;
 }
 
-.role-desc {
+.role-card .role-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #303133;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.role-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.role-card .card-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.role-card .role-desc {
     font-size: 13px;
-    color: #666;
-}
-
-.ellipsis-2 {
+    color: #909399;
+    margin: 0;
+    line-height: 1.5;
+    height: 38px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
-    overflow: hidden;
 }
 
-.bind-row {
+.bind-info {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    /* 左右分布 */
-    margin-top: 8px;
+    align-items: center;
+    margin-top: 4px;
 }
 
-.bind-left {
+.voice-tag-side {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
 }
 
-.bind-right {
-    flex-shrink: 0;
-    /* 防止按钮被压缩 */
+.voice-tag-side .el-tag {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.play-btn {
+    transition: all 0.2s;
+}
+
+.play-btn:hover:not(:disabled) {
+    background-color: #ecf5ff;
+    color: #409eff;
+    transform: scale(1.1);
 }
 
 

@@ -92,36 +92,41 @@
     <!-- 提示词卡片网格 -->
     <el-row :gutter="20">
       <el-col v-for="item in prompts" :key="item.id" :xs="24" :sm="12" :md="8" :lg="6" style="margin-bottom: 20px;">
-        <el-card shadow="hover" class="prompt-card">
+        <el-card shadow="hover" class="prompt-card" :body-style="{ padding: '0px' }">
           <!-- 卡片头部 -->
           <div class="card-header">
-            <h3 class="prompt-title">{{ item.name }}</h3>
+            <h3 class="prompt-title" :title="item.name">{{ item.name }}</h3>
             <div class="actions">
-              <el-button text size="small" @click="openDialog(item)">
+              <el-button link type="primary" size="small" @click="openDialog(item)">
                 <el-icon>
                   <Edit />
                 </el-icon>
               </el-button>
-              <el-button text size="small" type="danger" @click="removePrompt(item)">
-                <el-icon>
-                  <Delete />
-                </el-icon>
-              </el-button>
+              <el-popconfirm title="确定要删除该提示词吗？" @confirm="removePrompt(item)">
+                <template #reference>
+                  <el-button link type="danger" size="small">
+                    <el-icon>
+                      <Delete />
+                    </el-icon>
+                  </el-button>
+                </template>
+              </el-popconfirm>
             </div>
           </div>
-          <p class="prompt-task">所属任务：{{ item.task }}</p>
 
-          <!-- 描述 -->
-          <p class="prompt-desc">{{ item.description || '暂无描述' }}</p>
+          <div class="card-body">
+            <div class="meta-info">
+              <el-tag size="small" effect="plain" class="task-tag">{{ item.task }}</el-tag>
+            </div>
 
-          <!-- 内容 -->
-          <p class="prompt-content">{{ item.content }}</p>
+            <!-- 描述 -->
+            <p class="prompt-desc" :title="item.description">{{ item.description || '暂无描述' }}</p>
 
-          <!-- 底部 -->
-          <!-- <div class="card-footer">
-            <span>创建：{{ item.created_at }}</span>
-            <span>更新：{{ item.updated_at }}</span>
-          </div> -->
+            <!-- 内容 -->
+            <div class="content-preview">
+              <p class="prompt-content">{{ item.content }}</p>
+            </div>
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -269,90 +274,94 @@ function removePrompt(row) {
 /* 卡片 */
 .prompt-card {
   border-radius: 12px;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
-  overflow: hidden;
+  border: 1px solid #ebeef5;
 }
 
 .prompt-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  border-color: #409eff;
 }
 
-/* 卡片标题栏（主题色 + 圆角） */
+/* 卡片头部 */
 .card-header {
-  background: #409eff;
-  /* ✅ 主题蓝 */
-  padding: 10px 12px;
+  padding: 14px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
+  border-bottom: 1px solid #f0f2f5;
+  background-color: #fafafa;
 }
 
 .prompt-title {
   font-size: 16px;
   font-weight: 600;
-  color: #fff;
-  /* ✅ 白字 */
+  color: #303133;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
 }
 
 .actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
-.actions .el-button {
-  color: #fff;
-  /* 按钮改为白色图标 */
+.card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.meta-info {
+  display: flex;
+  align-items: center;
+}
+
+.task-tag {
+  border-radius: 4px;
+  font-weight: 500;
 }
 
 /* 描述 */
 .prompt-desc {
   font-size: 13px;
   color: #909399;
-  margin: 10px 12px 4px 12px;
-  line-height: 1.4;
-  min-height: 20px;
+  margin: 0;
+  line-height: 1.5;
+  height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
-/* 内容（最多显示3行，超出省略） */
+/* 内容预览区域 */
+.content-preview {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 10px;
+  border: 1px solid #f0f2f5;
+}
+
 .prompt-content {
-  flex: 1;
-  font-size: 14px;
+  font-size: 12px;
   color: #606266;
-  margin: 4px 12px 10px 12px;
-  line-height: 1.5;
-  max-height: 66px;
+  margin: 0;
+  line-height: 1.6;
+  height: 58px;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-}
-
-/* 底部信息 */
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #a8abb2;
-  border-top: 1px solid #ebeef5;
-  padding: 6px 12px;
-  background: #fafafa;
-}
-
-.prompt-task {
-  font-size: 12px;
-  color: #909399;
-  /* ✅ Element Plus 默认灰色 */
-  margin: 0 12px 6px 12px;
-  font-style: italic;
-  /* 可选：斜体，和描述区分 */
+  font-family: monospace;
 }
 
 .el-button.is-plain.el-button--danger {
