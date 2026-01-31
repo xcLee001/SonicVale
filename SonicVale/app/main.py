@@ -67,7 +67,7 @@ app.add_middleware(
 #     Base.metadata.create_all(bind=engine)
 
 WORKERS = 1
-QUEUE_CAPACITY = 500
+QUEUE_CAPACITY = 0
 
 from sqlalchemy import text
 
