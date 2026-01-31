@@ -7,21 +7,35 @@
           <el-option v-for="t in ttsProviders" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <el-button type="primary" :disabled="!selectedTTS" @click="openDialog()">新增音色</el-button>
-        <el-button type="success" :disabled="!selectedTTS || voices.length === 0" @click="handleExport">导出音色库</el-button>
+        <el-button type="success" plain :disabled="!selectedTTS || selectedCount === 0" @click="handleExportSelected">导出音色库（选中）</el-button>
+        <el-popconfirm
+          title="确认删除选中的音色？"
+          confirm-button-text="确定"
+          cancel-button-text="取消"
+          @confirm="handleBatchDelete"
+        >
+          <template #reference>
+            <el-button type="danger" plain :disabled="!selectedTTS || selectedCount === 0">批量删除（选中）</el-button>
+          </template>
+        </el-popconfirm>
         <el-button type="warning" :disabled="!selectedTTS" @click="handleImport">导入音色库</el-button>
       </div>
     </div>
 
     <el-table
       :data="voices"
+      ref="voiceTableRef"
       border
       stripe
       highlight-current-row
       class="voice-table"
       :header-cell-style="headerCellStyle"
       :cell-style="cellStyle"
+      row-key="id"
+      @selection-change="handleSelectionChange"
     >
-      <el-table-column label="#" width="64" align="center">
+      <el-table-column type="selection" width="48" align="center" />
+      <el-table-column label="#" width="80" align="center">
         <template #default="{ $index }">{{ $index + 1 }}</template>
       </el-table-column>
 
@@ -70,8 +84,12 @@
         </template>
       </el-table-column>
 
-      <el-table-column prop="created_at" label="创建时间" width="180" />
-      <el-table-column prop="updated_at" label="更新时间" width="180" />
+      <el-table-column label="创建时间" width="180">
+        <template #default="{ row }">{{ formatDateTime(row.created_at) }}</template>
+      </el-table-column>
+      <el-table-column label="更新时间" width="180">
+        <template #default="{ row }">{{ formatDateTime(row.updated_at) }}</template>
+      </el-table-column>
 
       <el-table-column label="操作" width="320" fixed="right" align="center">
   <template #default="{ row }">
@@ -244,9 +262,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Headset } from '@element-plus/icons-vue'
+import dayjs from 'dayjs'
 import { createVoice, fetchVoicesByTTS, updateVoice, deleteVoice, exportVoices, importVoices, processVoiceAudio, copyVoice } from '../api/voice'
 import { fetchTTSProviders } from '../api/provider'
 import WaveCellPro from '../components/WaveCellPro.vue'
@@ -267,6 +286,27 @@ const native = window.native
 const ttsProviders = ref([])
 const selectedTTS = ref(null)
 const voices = ref([])
+const voiceTableRef = ref(null)
+const selectedRows = ref([])
+const selectedIds = computed(() => (selectedRows.value || []).map(v => v?.id).filter(v => v !== null && v !== undefined))
+const selectedCount = computed(() => selectedIds.value.length)
+
+function handleSelectionChange(rows) {
+  selectedRows.value = rows || []
+}
+
+function formatDateTime(value) {
+  if (!value) return '—'
+  const d = dayjs(value)
+  if (!d.isValid()) return String(value)
+  return d.format('YYYY-MM-DD HH:mm:ss')
+}
+
+async function clearTableSelection() {
+  await nextTick()
+  voiceTableRef.value?.clearSelection?.()
+  selectedRows.value = []
+}
 
 // ====== 音频播放控制 ======
 const audioPlayer = new Audio()
@@ -370,6 +410,7 @@ const loadVoices = async () => {
   if (!selectedTTS.value) return
   const list = await fetchVoicesByTTS(selectedTTS.value)
   voices.value = list || []
+  await clearTableSelection()
 }
 
 function openDialog(row) {
@@ -474,12 +515,43 @@ function submitForm() {
 
 async function handleDelete(id) {
   try {
+    audioPlayer.pause()
     await deleteVoice(id)
     ElMessage.success('删除成功')
     await loadVoices()
   } catch {
     ElMessage.error('删除失败')
   }
+}
+
+async function handleBatchDelete() {
+  const ids = selectedIds.value
+  if (!ids.length) {
+    ElMessage.warning('请先选择要删除的音色')
+    return
+  }
+
+  audioPlayer.pause()
+
+  const results = await Promise.allSettled(
+    ids.map(id =>
+      deleteVoice(id).then(res => {
+        if (res?.code !== 200) throw new Error(res?.message || '删除失败')
+        return res
+      })
+    )
+  )
+
+  const failed = results.filter(r => r.status === 'rejected')
+  const successCount = ids.length - failed.length
+
+  if (failed.length === 0) {
+    ElMessage.success(`删除成功：${successCount} 个`)
+  } else {
+    ElMessage.warning(`删除完成：成功 ${successCount} 个，失败 ${failed.length} 个`)
+  }
+
+  await loadVoices()
 }
 
 onMounted(async () => {
@@ -495,30 +567,27 @@ function handleTagChange() {
   }, 0)
 }
 
-// ====== 导出音色库 ======
-async function handleExport() {
+async function handleExportSelected() {
   if (!selectedTTS.value) {
     ElMessage.warning('请先选择 TTS 引擎')
     return
   }
-  if (voices.value.length === 0) {
-    ElMessage.warning('当前没有可导出的音色')
+  const ids = selectedIds.value
+  if (ids.length === 0) {
+    ElMessage.warning('请先选择要导出的音色')
     return
   }
 
   try {
-    // 调用 native 选择保存路径
     const savePath = await native?.saveFile?.({
-      title: '导出音色库',
-      defaultPath: 'voices_export.zip',
+      title: '导出选中音色',
+      defaultPath: 'voices_selected_export.zip',
       filters: [{ name: 'ZIP 文件', extensions: ['zip'] }]
     })
-    
-    if (!savePath) {
-      return // 用户取消
-    }
 
-    const res = await exportVoices(selectedTTS.value, savePath)
+    if (!savePath) return
+
+    const res = await exportVoices(selectedTTS.value, savePath, ids)
     if (res.code === 200) {
       ElMessage.success('导出成功：' + savePath)
     } else {

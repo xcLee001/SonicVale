@@ -39,11 +39,10 @@ export function deleteVoice(id) {
 }
 
 // 导出音色库
-export function exportVoices(tts_provider_id, export_path) {
-  return request.post('/voices/export', {
-    tts_provider_id,
-    export_path
-  })
+export function exportVoices(tts_provider_id, export_path, voice_ids = null) {
+  const payload = { tts_provider_id, export_path }
+  if (Array.isArray(voice_ids) && voice_ids.length > 0) payload.voice_ids = voice_ids
+  return request.post('/voices/export', payload)
 }
 
 // 导入音色库
