@@ -60,25 +60,25 @@ class LLMEngine:
         for attempt in range(retries):
             try:
                 # 开启流式
-                stream = self.client.chat.completions.create(
+                # stream = self.client.chat.completions.create(
+                #     model=self.model_name,
+                #     messages=[{"role": "user", "content": prompt}],
+                #     stream=True,
+                #     timeout=3000,
+                #     **self.custom_params
+                # )
+
+                # 关闭流式，直接获取完整响应
+                response = self.client.chat.completions.create(
                     model=self.model_name,
                     messages=[{"role": "user", "content": prompt}],
-                    stream=True,
+                    stream=False,  # 关键：设置为 False
                     timeout=3000,
                     **self.custom_params
                 )
-                
-                # 拼接 delta.content
-                full_text = ""
-                for chunk in stream:
-                    if chunk.choices and len(chunk.choices) > 0:
-                        delta = chunk.choices[0].delta
-                        content = delta.content if hasattr(delta, 'content') else None
-                        if content:
-                            print(content, end="", flush=True)  # 实时输出
-                            full_text += content
 
-                print()  # 换行
+                # 直接获取完整文本
+                full_text = response.choices[0].message.content
                 return full_text
 
             except Exception as e:
