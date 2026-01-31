@@ -89,13 +89,20 @@ class VoiceService:
         self.multi_emotion_voice_repository.delete_multi_emotion_voice_by_voice_id(voice_id)
         return res
 
-    def export_voices(self, tts_provider_id: int, export_path: str) -> str:
+    def export_voices(self, tts_provider_id: int, export_path: str, ids: List[int] | None = None) -> str:
         """导出音色库到zip文件
         - 获取所有音色
         - 将音色信息和对应的音频文件打包到zip
         - 返回zip文件路径
         """
-        voices = self.get_all_voices(tts_provider_id)
+        if ids is None:
+            voices = self.get_all_voices(tts_provider_id)
+        else:
+            pos = self.repository.get_by_ids(tts_provider_id, ids)
+            voices = [
+                VoiceEntity(**{k: v for k, v in po.__dict__.items() if not k.startswith("_")})
+                for po in pos
+            ]
         if not voices:
             return None
 

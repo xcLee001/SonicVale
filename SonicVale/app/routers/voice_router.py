@@ -52,11 +52,11 @@ def process_voice_audio(dto: VoiceAudioProcessDTO, voice_service: VoiceService =
 
 @router.post("/export", response_model=Res[str],
              summary="导出音色库",
-             description="将指定TTS供应商下的所有音色打包到zip文件")
+             description="将指定TTS供应商下的音色打包到zip文件（可选传ids仅导出选中）")
 def export_voices(dto: VoiceExportDTO, voice_service: VoiceService = Depends(get_voice_service)):
     """导出音色库到zip文件"""
     try:
-        result = voice_service.export_voices(dto.tts_provider_id, dto.export_path)
+        result = voice_service.export_voices(dto.tts_provider_id, dto.export_path, dto.ids)
         if result:
             return Res(data=result, code=200, message="导出成功")
         else:

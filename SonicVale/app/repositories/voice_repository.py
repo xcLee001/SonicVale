@@ -18,6 +18,14 @@ class VoiceRepository:
         """获取tts下所有音色"""
         return self.db.execute(select(VoicePO).where(VoicePO.tts_provider_id == tts_id)).scalars().all()
 
+    def get_by_ids(self, tts_id: int, ids: list[int]) -> Sequence[VoicePO]:
+        """根据ids获取tts下的音色"""
+        if not ids:
+            return []
+        return self.db.execute(
+            select(VoicePO).where(VoicePO.tts_provider_id == tts_id, VoicePO.id.in_(ids))
+        ).scalars().all()
+
 
     def create(self, data: VoicePO) -> VoicePO:
         """新增音色"""

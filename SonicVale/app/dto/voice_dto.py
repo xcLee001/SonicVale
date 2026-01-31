@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, AliasChoices
 
 
 class VoiceCreateDTO(BaseModel):
@@ -28,6 +28,7 @@ class VoiceExportDTO(BaseModel):
     """导出音色库请求DTO"""
     tts_provider_id: int
     export_path: str
+    ids: Optional[List[int]] = Field(default=None, validation_alias=AliasChoices("ids", "voice_ids"))
 
 
 class VoiceImportDTO(BaseModel):
