@@ -547,7 +547,7 @@
             </template>
         </el-dialog>
 
-        <el-dialog v-model="dialogSelectVoice.visible" title="选择音色" width="780px">
+        <el-dialog v-model="dialogSelectVoice.visible" title="选择音色" width="820px" align-center>
             <!-- 筛选区 -->
             <div class="filter-bar">
                 <el-select ref="filterSelectRef" v-model="filterTags" multiple filterable clearable collapse-tags
@@ -559,34 +559,37 @@
                 <el-input v-model="searchName" placeholder="搜索名字" clearable style="margin-left: 8px; width: 200px;" />
             </div>
 
+            <!-- 音色卡片网格 - 增加滚动容器 -->
+            <div class="voice-selection-container">
+                <el-scrollbar max-height="60vh">
+                    <div class="voice-grid">
+                        <el-card v-for="v in filteredVoices" :key="v.id" class="voice-card" shadow="hover"
+                            @click="selectVoice(v)">
+                            <div class="voice-card-head">
+                                <div class="voice-title">{{ v.name }}</div>
+                                <div class="voice-desc">
+                                    <el-tag v-for="(tag, index) in (v.description ? v.description.split(',') : [])" :key="index"
+                                        type="info" effect="plain" size="small">
+                                        {{ tag }}
+                                    </el-tag>
+                                    <span v-if="!v.description">无标签</span>
+                                </div>
+                            </div>
 
-            <!-- 音色卡片网格 -->
-            <div class="voice-grid">
-                <el-card v-for="v in filteredVoices" :key="v.id" class="voice-card" shadow="hover"
-                    @click="selectVoice(v)">
-                    <div class="voice-card-head">
-                        <div class="voice-title">{{ v.name }}</div>
-                        <div class="voice-desc">
-                            <el-tag v-for="(tag, index) in (v.description ? v.description.split(',') : [])" :key="index"
-                                type="info" effect="plain" size="small">
-                                {{ tag }}
-                            </el-tag>
-                            <span v-if="!v.description">无标签</span>
-                        </div>
+                            <div class="voice-actions">
+                                <el-button circle @click.stop="toggleVoicePlay(v.id)"
+                                    :title="isPlaying && currentVoiceId === v.id ? '暂停' : '试听'">
+                                    <el-icon>
+                                        <Headset />
+                                    </el-icon>
+                                </el-button>
+                                <el-button type="primary" size="small" @click.stop="confirmSelectVoice(v)">
+                                    选择
+                                </el-button>
+                            </div>
+                        </el-card>
                     </div>
-
-                    <div class="voice-actions">
-                        <el-button circle @click.stop="toggleVoicePlay(v.id)"
-                            :title="isPlaying && currentVoiceId === v.id ? '暂停' : '试听'">
-                            <el-icon>
-                                <Headset />
-                            </el-icon>
-                        </el-button>
-                        <el-button type="primary" size="small" @click.stop="confirmSelectVoice(v)">
-                            选择
-                        </el-button>
-                    </div>
-                </el-card>
+                </el-scrollbar>
             </div>
         </el-dialog>
 
@@ -3104,22 +3107,15 @@ function restoreLastChapter() {
     gap: 12px;
 }
 
-.filter-select {
-    flex: 1;
-    max-width: 300px;
-    --el-select-input-height: 32px;
-    /* 控制高度更紧凑 */
-}
-
-.filter-input {
-    flex: 1;
-    max-width: 240px;
+.voice-selection-container {
+    padding: 4px;
 }
 
 .voice-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 16px;
+    padding: 10px 4px;
 }
 
 .voice-card {
@@ -3127,36 +3123,47 @@ function restoreLastChapter() {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: 140px;
-    transition: transform 0.2s ease;
+    min-height: 130px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #ebeef5;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .voice-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+    border-color: #409eff;
 }
 
 .voice-card-head {
-    margin-bottom: 10px;
+    padding: 12px 14px;
+    flex: 1;
 }
 
 .voice-title {
     font-weight: 600;
     font-size: 15px;
-    margin-bottom: 6px;
+    color: #303133;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .voice-desc {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    font-size: 13px;
-    color: #666;
+    gap: 6px;
 }
 
 .voice-actions {
     display: flex;
-    justify-content: flex-end;
-    gap: 8px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background-color: #fafafa;
+    border-top: 1px solid #f0f2f5;
 }
 
 
