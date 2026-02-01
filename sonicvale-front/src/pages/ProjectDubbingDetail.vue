@@ -768,7 +768,7 @@ function connectWS() {
                 applyLineUpdate(msg)
                 queue_rest_size.value = msg.progress
                 if (msg.progress === 0 && msg.status !== 'processing') {
-                    if (completionSoundEnabled.value) {
+                    if (completionSoundEnabled.value === true) {
                         const audio = new Audio(new URL('../assets/完成提示音.mp3', import.meta.url).href)
                         audio.volume = 0.2
                         audio.play().catch(err => {
@@ -2465,15 +2465,21 @@ async function batchAddTailSilence() {
     }
 }
 // const playMode = ref('sequential') // 'single' = 单条, 'sequential' = 顺序
-const playMode = ref(localStorage.getItem('playMode') || 'sequential')
-const completionSoundEnabled = ref(localStorage.getItem('completionSoundEnabled') !== '0')
+const playMode = ref('sequential')
+try { playMode.value = localStorage.getItem('playMode') || 'sequential' } catch { }
+
+const completionSoundEnabled = ref(false)
+try {
+    const raw = localStorage.getItem('completionSoundEnabled')
+    completionSoundEnabled.value = raw === '1' || raw === 'true'
+} catch { }
 
 // 监听 playMode 变化并存储到本地
 watch(playMode, (val) => {
-    localStorage.setItem('playMode', val)
+    try { localStorage.setItem('playMode', val) } catch { }
 })
 watch(completionSoundEnabled, (val) => {
-    localStorage.setItem('completionSoundEnabled', val ? '1' : '0')
+    try { localStorage.setItem('completionSoundEnabled', val ? '1' : '0') } catch { }
 })
 // 处理 ended 事件
 function handleEnded({ handle, id }) {
