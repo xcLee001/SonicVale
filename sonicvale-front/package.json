@@ -1,7 +1,7 @@
 {
   "name": "sonicvale",
   "productName": "音谷",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "author": "lxc",
   "main": "electron/main.js",
   "scripts": {
