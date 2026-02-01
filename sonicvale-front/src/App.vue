@@ -66,35 +66,39 @@
 
       <!-- 底部收缩/展开按钮 -->
       <div class="sider-footer">
-        <el-tooltip :content="isDark ? '切换到亮色模式' : '切换到暗色模式'" placement="right">
-          <el-button class="theme-btn" circle @click="toggleTheme">
-            <el-icon v-if="isDark">
-              <Sunny />
-            </el-icon>
-            <el-icon v-else>
-              <Moon />
-            </el-icon>
-          </el-button>
-        </el-tooltip>
+        <!-- 主题切换 -->
+        <div class="footer-item">
+          <el-tooltip :content="isDark ? '切换到亮色模式' : '切换到暗色模式'" placement="right" :disabled="!collapsed">
+            <el-button class="theme-btn" circle @click="toggleTheme">
+              <el-icon v-if="isDark">
+                <Sunny />
+              </el-icon>
+              <el-icon v-else>
+                <Moon />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
+          <transition name="fade">
+            <span v-if="!collapsed" class="action-label" @click="toggleTheme">{{ isDark ? '暗色模式' : '亮色模式' }}</span>
+          </transition>
+        </div>
 
-        <transition name="fade">
-          <span v-if="!collapsed" class="theme-label">{{ isDark ? '暗色模式' : '亮色模式' }}</span>
-        </transition>
-
-        <el-tooltip :content="collapsed ? '展开菜单' : '收起菜单'" placement="right">
-          <el-button class="collapse-btn" circle @click="toggleCollapse">
-            <el-icon v-if="collapsed">
-              <Expand />
-            </el-icon>
-            <el-icon v-else>
-              <Fold />
-            </el-icon>
-          </el-button>
-        </el-tooltip>
-
-        <transition name="fade">
-          <span v-if="!collapsed" class="collapse-label">收起侧边栏</span>
-        </transition>
+        <!-- 折叠切换 -->
+        <div class="footer-item">
+          <el-tooltip :content="collapsed ? '展开菜单' : '收起菜单'" placement="right" :disabled="!collapsed">
+            <el-button class="collapse-btn" circle @click="toggleCollapse">
+              <el-icon v-if="collapsed">
+                <Expand />
+              </el-icon>
+              <el-icon v-else>
+                <Fold />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
+          <transition name="fade">
+            <span v-if="!collapsed" class="action-label" @click="toggleCollapse">收起侧边栏</span>
+          </transition>
+        </div>
       </div>
     </el-aside>
 
@@ -209,17 +213,44 @@ body,
 
 /* 底部控制区 */
 .sider-footer {
-  flex: 0 0 56px;
+  flex: 0 0 auto;
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 10px 8px 12px 8px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .is-collapsed .sider-footer {
+  align-items: center;
+}
+
+.footer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.footer-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.is-collapsed .footer-item {
   justify-content: center;
+  padding: 0;
+  width: 44px;
+}
+
+.action-label {
+  font-size: 13px;
+  color: #bfcbd9;
+  white-space: nowrap;
+  user-select: none;
 }
 
 /* 折叠按钮 */
@@ -235,11 +266,6 @@ body,
   background: rgba(255, 255, 255, 0.12);
 }
 
-.collapse-label {
-  font-size: 12px;
-  color: #bfcbd9;
-}
-
 /* 主题切换按钮 */
 .theme-btn {
   background: rgba(255, 255, 255, 0.06);
@@ -251,11 +277,6 @@ body,
 
 .theme-btn:hover {
   background: rgba(255, 255, 255, 0.12);
-}
-
-.theme-label {
-  font-size: 12px;
-  color: #bfcbd9;
 }
 
 /* 右侧容器 */
