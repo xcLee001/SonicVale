@@ -66,6 +66,21 @@
 
       <!-- 底部收缩/展开按钮 -->
       <div class="sider-footer">
+        <el-tooltip :content="isDark ? '切换到亮色模式' : '切换到暗色模式'" placement="right">
+          <el-button class="theme-btn" circle @click="toggleTheme">
+            <el-icon v-if="isDark">
+              <Sunny />
+            </el-icon>
+            <el-icon v-else>
+              <Moon />
+            </el-icon>
+          </el-button>
+        </el-tooltip>
+
+        <transition name="fade">
+          <span v-if="!collapsed" class="theme-label">{{ isDark ? '暗色模式' : '亮色模式' }}</span>
+        </transition>
+
         <el-tooltip :content="collapsed ? '展开菜单' : '收起菜单'" placement="right">
           <el-button class="collapse-btn" circle @click="toggleCollapse">
             <el-icon v-if="collapsed">
@@ -93,9 +108,9 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { Folder, Setting, Microphone, Fold, Expand, Document } from '@element-plus/icons-vue'
+import { Folder, Setting, Microphone, Fold, Expand, Document, Moon, Sunny } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeMenu = ref(route.path)
@@ -103,6 +118,37 @@ watch(() => route.path, (p) => (activeMenu.value = p))
 
 const collapsed = ref(false)
 const toggleCollapse = () => { collapsed.value = !collapsed.value }
+
+const THEME_KEY = 'sv_theme'
+const isDark = ref(false)
+
+function readStoredTheme() {
+  try { return localStorage.getItem(THEME_KEY) } catch { return null }
+}
+
+function systemPrefersDark() {
+  try { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches } catch { return false }
+}
+
+function applyTheme(dark) {
+  document.documentElement.classList.toggle('dark', !!dark)
+}
+
+function toggleTheme() {
+  isDark.value = !isDark.value
+}
+
+onMounted(() => {
+  const stored = readStoredTheme()
+  isDark.value = stored ? stored === 'dark' : systemPrefersDark()
+  applyTheme(isDark.value)
+})
+
+watch(isDark, (dark) => {
+  applyTheme(dark)
+  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light') } catch { }
+  window.dispatchEvent(new CustomEvent('sv-theme-changed', { detail: { theme: dark ? 'dark' : 'light' } }))
+})
 </script>
 
 <style>
@@ -194,6 +240,24 @@ body,
   color: #bfcbd9;
 }
 
+/* 主题切换按钮 */
+.theme-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  width: 36px;
+  height: 36px;
+  backdrop-filter: blur(2px);
+}
+
+.theme-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.theme-label {
+  font-size: 12px;
+  color: #bfcbd9;
+}
+
 /* 右侧容器 */
 .layout-content {
   display: flex;
@@ -202,7 +266,7 @@ body,
 }
 
 .layout-main {
-  background: #f5f7fa;
+  background: var(--el-bg-color-page);
   padding: 24px;
   flex: 1 1 auto;
   min-height: 0;

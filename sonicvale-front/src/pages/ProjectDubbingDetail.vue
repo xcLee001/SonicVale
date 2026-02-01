@@ -1183,7 +1183,7 @@ const displayedLines = computed(() => {
         .filter(l => (!statusFilter.value ? true : l.status === statusFilter.value))
 })
 
-function tableHeaderStyle() { return { background: '#f7f8fa', fontWeight: 600, color: '#303133' } }
+function tableHeaderStyle() { return { background: 'var(--el-fill-color-light)', fontWeight: 600, color: 'var(--el-text-color-primary)' } }
 
 
 
@@ -3125,7 +3125,7 @@ function restoreLastChapter() {
     justify-content: space-between;
     min-height: 130px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid #ebeef5;
+    border: 1px solid var(--el-border-color-lighter);
     border-radius: 12px;
     overflow: hidden;
 }
@@ -3144,7 +3144,7 @@ function restoreLastChapter() {
 .voice-title {
     font-weight: 600;
     font-size: 15px;
-    color: #303133;
+    color: var(--el-text-color-primary);
     margin-bottom: 8px;
     white-space: nowrap;
     overflow: hidden;
@@ -3162,8 +3162,8 @@ function restoreLastChapter() {
     justify-content: space-between;
     align-items: center;
     padding: 10px 14px;
-    background-color: #fafafa;
-    border-top: 1px solid #f0f2f5;
+    background-color: var(--el-fill-color-light);
+    border-top: 1px solid var(--el-border-color-lighter);
 }
 
 
@@ -3219,7 +3219,7 @@ function restoreLastChapter() {
 .aside {
     height: 92vh;
     padding: 5px;
-    background: #fff;
+    background: var(--el-bg-color);
     /* border: 1px red solid; */
     overflow: auto;
 }
@@ -3406,7 +3406,7 @@ function restoreLastChapter() {
 
 /* 悬停放大 + 明亮底色 */
 .op-btn:hover {
-    background-color: #cee8b9;
+    background-color: var(--el-color-success-light-9);
     /* ✅ 非透明浅蓝底 */
     color: var(--el-color-primary);
     transform: scale(1.12);
@@ -3420,7 +3420,7 @@ function restoreLastChapter() {
 
 /* 删除按钮 hover */
 .del-btn:hover {
-    background-color: #ffecec;
+    background-color: var(--el-color-danger-light-9);
     /* ✅ 非透明浅红底 */
     color: var(--el-color-danger);
     transform: scale(1.12);
@@ -3430,13 +3430,13 @@ function restoreLastChapter() {
    🟦 选中状态下（非透明版）
    ============================= */
 .chapter-item .op-btn {
-    background-color: #cee8b9;
+    background-color: var(--el-color-success-light-9);
     /* ✅ 纯白底，非透明 */
     box-shadow: 0 0 0 1px var(--el-color-primary-light-5) inset;
 }
 
 .chapter-item .del-btn {
-    background-color: #fff5f5;
+    background-color: var(--el-color-danger-light-9);
     /* ✅ 纯白微红底 */
     box-shadow: 0 0 0 1px var(--el-color-danger-light-5) inset;
 }
@@ -3457,7 +3457,7 @@ function restoreLastChapter() {
 
 .content {
 
-    background: #fff;
+    background: var(--el-bg-color);
     padding: 5px;
     display: flex;
     flex-direction: column;
@@ -3517,7 +3517,7 @@ function restoreLastChapter() {
     white-space: pre-wrap;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     line-height: 1.6;
-    color: #333;
+    color: var(--el-text-color-primary);
     padding: 8px 2px;
 }
 
@@ -3537,8 +3537,8 @@ function restoreLastChapter() {
 
     display: flex;
     align-items: center;
-    border-bottom: 1px solid #ebeef5;
-    background: #fff;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    background: var(--el-bg-color);
     padding: 0 12px;
 
 }
@@ -3599,7 +3599,7 @@ function restoreLastChapter() {
 }
 
 .table-box :deep(::-webkit-scrollbar-track) {
-    background-color: #f1f1f1;
+    background-color: var(--el-fill-color-light);
     border-radius: 7px;
 }
 
@@ -3619,7 +3619,7 @@ function restoreLastChapter() {
 
 .role-voice {
     font-size: 12px;
-    color: #666;
+    color: var(--el-text-color-regular);
 }
 
 .role-grid {
@@ -3636,7 +3636,7 @@ function restoreLastChapter() {
 .role-card {
     border-radius: 12px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid #ebeef5;
+    border: 1px solid var(--el-border-color-lighter);
 }
 
 .role-card:hover {
@@ -3650,8 +3650,8 @@ function restoreLastChapter() {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #f0f2f5;
-    background-color: #fafafa;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    background-color: var(--el-fill-color-light);
 }
 
 .role-info-side {
@@ -3671,7 +3671,7 @@ function restoreLastChapter() {
 .role-card .role-title {
     font-size: 15px;
     font-weight: 600;
-    color: #303133;
+    color: var(--el-text-color-primary);
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -3693,7 +3693,7 @@ function restoreLastChapter() {
 
 .role-card .role-desc {
     font-size: 13px;
-    color: #909399;
+    color: var(--el-text-color-secondary);
     margin: 0;
     line-height: 1.5;
     height: 38px;
@@ -3730,7 +3730,7 @@ function restoreLastChapter() {
 }
 
 .play-btn:hover:not(:disabled) {
-    background-color: #ecf5ff;
+    background-color: var(--el-color-primary-light-9);
     color: #409eff;
     transform: scale(1.1);
 }
@@ -3742,7 +3742,7 @@ function restoreLastChapter() {
 
 .queue-item .queue-meta {
     font-size: 12px;
-    color: #666;
+    color: var(--el-text-color-regular);
 }
 
 .w220 {
@@ -3790,7 +3790,7 @@ function restoreLastChapter() {
 
 .voice-desc {
     font-size: 12px;
-    color: #666;
+    color: var(--el-text-color-regular);
 }
 
 .voice-actions {
@@ -3803,15 +3803,15 @@ function restoreLastChapter() {
     border-radius: 10px;
     overflow: hidden;
     border: 1px solid var(--el-border-color-lighter);
-    background: #fff;
+    background: var(--el-bg-color);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     font-size: 13px;
 }
 
 :deep(.el-table-v2__header) {
-    background: #f9fafb;
+    background: var(--el-fill-color-light);
     font-weight: 600;
-    color: #333;
+    color: var(--el-text-color-primary);
     border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
@@ -3820,7 +3820,7 @@ function restoreLastChapter() {
 }
 
 :deep(.el-table-v2__row:hover) {
-    background-color: #f5f7fa;
+    background-color: var(--el-fill-color-light);
 }
 
 
@@ -3854,9 +3854,9 @@ function restoreLastChapter() {
     justify-content: center;
     gap: 8px;
     padding: 6px 10px;
-    background-color: #fafafa;
+    background-color: var(--el-fill-color-light);
     border-radius: 6px;
-    border: 1px solid #ebeef5;
+    border: 1px solid var(--el-border-color-lighter);
     transition: all 0.2s ease;
 }
 
@@ -3867,7 +3867,7 @@ function restoreLastChapter() {
 
 .status-title {
     font-weight: 600;
-    color: #333;
+    color: var(--el-text-color-primary);
     font-size: 13px;
     user-select: none;
 }
@@ -3911,8 +3911,8 @@ function restoreLastChapter() {
     justify-content: center;
     height: 100%;
     min-height: 400px;
-    background: #fafafa;
+    background: var(--el-fill-color-light);
     border-radius: 12px;
-    color: #909399;
+    color: var(--el-text-color-secondary);
 }
 </style>

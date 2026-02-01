@@ -365,7 +365,7 @@ onMounted(async () => {
 }
 
 .styled-table ::v-deep(.el-table__header th) {
-  background-color: #f9fafc;
+  background-color: var(--el-fill-color-light);
   font-weight: 600;
   text-align: center;
 }
@@ -375,11 +375,11 @@ onMounted(async () => {
 }
 
 .api-key {
-  background: #f4f4f5;
+  background: var(--el-fill-color-light);
   padding: 2px 6px;
   border-radius: 6px;
   font-size: 13px;
-  color: #666;
+  color: var(--el-text-color-regular);
 }
 
 .status-dot {

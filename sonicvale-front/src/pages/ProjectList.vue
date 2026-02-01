@@ -303,7 +303,7 @@ const pickRootDir = async () => {
     border-radius: 12px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     height: 100%;
-    border: 1px solid #ebeef5;
+    border: 1px solid var(--el-border-color-lighter);
 }
 
 .project-card:hover {
@@ -318,14 +318,14 @@ const pickRootDir = async () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #f0f2f5;
-    background-color: #fafafa;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    background-color: var(--el-fill-color-light);
 }
 
 .project-title {
     font-size: 16px;
     font-weight: 600;
-    color: #303133;
+    color: var(--el-text-color-primary);
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -342,7 +342,7 @@ const pickRootDir = async () => {
 
 .project-desc {
     font-size: 13px;
-    color: #909399;
+    color: var(--el-text-color-secondary);
     margin: 0 0 16px 0;
     line-height: 1.5;
     height: 40px;
@@ -366,21 +366,21 @@ const pickRootDir = async () => {
     align-items: center;
     gap: 8px;
     font-size: 13px;
-    color: #606266;
+    color: var(--el-text-color-regular);
 }
 
 .meta-item .el-icon {
     font-size: 14px;
-    color: #909399;
+    color: var(--el-text-color-secondary);
 }
 
 .meta-label {
-    color: #909399;
+    color: var(--el-text-color-secondary);
     min-width: 60px;
 }
 
 .meta-value {
-    color: #303133;
+    color: var(--el-text-color-primary);
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
@@ -392,7 +392,7 @@ const pickRootDir = async () => {
     justify-content: space-between;
     align-items: center;
     padding-top: 12px;
-    border-top: 1px solid #f0f2f5;
+    border-top: 1px solid var(--el-border-color-lighter);
 }
 
 .time-info {
@@ -400,7 +400,7 @@ const pickRootDir = async () => {
     align-items: center;
     gap: 4px;
     font-size: 12px;
-    color: #a8abb2;
+    color: var(--el-text-color-secondary);
 }
 
 .precise-on {

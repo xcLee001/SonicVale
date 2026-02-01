@@ -77,6 +77,7 @@ const container = ref(null)
 let ws = null
 let regionsPlugin = null
 const region = ref(null) // ← 关键：响应式
+let themeListener = null
 
 const isPlaying = ref(false)
 const ready = ref(false)
@@ -88,6 +89,20 @@ const tailSilence = ref(0) // 默认 0 秒
 
 const hasRegion = computed(() => !!region.value)
 
+function getWaveColors() {
+  const dark = document?.documentElement?.classList?.contains('dark')
+  return {
+    waveColor: dark ? '#5b6473' : '#cfd6e4',
+    progressColor: '#409EFF',
+  }
+}
+
+function applyWaveTheme() {
+  if (!ws) return
+  const { waveColor, progressColor } = getWaveColors()
+  if (ws.setOptions) ws.setOptions({ waveColor, progressColor })
+}
+
 function toUrl(src) {
   if (!src) return ''
   if (/^https?:\/\//i.test(src) || /^file:\/\//i.test(src)) return src
@@ -95,6 +110,10 @@ function toUrl(src) {
 }
 
 onMounted(async () => {
+  themeListener = () => applyWaveTheme()
+  window.addEventListener('sv-theme-changed', themeListener)
+
+  const { waveColor, progressColor } = getWaveColors()
   ws = WaveSurfer.create({
     container: container.value,
     height: 64,
@@ -102,8 +121,8 @@ onMounted(async () => {
     autoScroll: true,
     autoCenter: true,
     barWidth: 2,
-    waveColor: '#cfd6e4',
-    progressColor: '#409EFF',
+    waveColor,
+    progressColor,
   })
 
   // v7：registerPlugin 获取实例
@@ -153,10 +172,11 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   try {
+    if (themeListener) window.removeEventListener('sv-theme-changed', themeListener)
     emit('dispose', ws)
     ws && ws.destroy()
   }
-  finally { ws = null; regionsPlugin = null; region.value = null }
+  finally { ws = null; regionsPlugin = null; region.value = null; themeListener = null }
 })
 
 // —— 实时预听：速度/音量 —— //
@@ -294,7 +314,7 @@ async function downloadAudio() {
 
 .lbl {
   font-size: 12px;
-  color: #666;
+  color: var(--el-text-color-regular);
   margin-left: 6px;
 }
 

@@ -390,8 +390,8 @@ const rules = {
 
 // 表格样式
 const headerCellStyle = () => ({
-  background: '#f7f8fa',
-  color: '#303133',
+  background: 'var(--el-fill-color-light)',
+  color: 'var(--el-text-color-primary)',
   fontWeight: 600
 })
 const cellStyle = () => ({ padding: '10px 12px' })
@@ -790,7 +790,7 @@ async function confirmCopy() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 .pick-line {
   display: flex;
@@ -805,7 +805,7 @@ async function confirmCopy() {
 }
 .path-text {
   font-size: 12px;
-  color: #666;
+  color: var(--el-text-color-regular);
   word-break: break-all;
 }
 .mb8 {
@@ -813,27 +813,27 @@ async function confirmCopy() {
 }
 .form-hint {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin-top: 4px;
 }
 .wave-editor-wrap {
   padding: 12px;
-  background: #f9fafc;
+  background: var(--el-fill-color-light);
   border-radius: 8px;
-  border: 1px solid #e4e7ed;
+  border: 1px solid var(--el-border-color);
 }
 .audio-editor-info {
   margin-bottom: 16px;
   padding: 10px 12px;
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
   border-radius: 6px;
 }
 .audio-editor-label {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 .audio-editor-value {
-  color: #303133;
+  color: var(--el-text-color-primary);
   font-weight: 600;
   font-size: 14px;
 }

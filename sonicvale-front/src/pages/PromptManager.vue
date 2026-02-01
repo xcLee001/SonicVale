@@ -276,7 +276,7 @@ function removePrompt(row) {
   border-radius: 12px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .prompt-card:hover {
@@ -291,14 +291,14 @@ function removePrompt(row) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #f0f2f5;
-  background-color: #fafafa;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background-color: var(--el-fill-color-light);
 }
 
 .prompt-title {
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -331,7 +331,7 @@ function removePrompt(row) {
 /* 描述 */
 .prompt-desc {
   font-size: 13px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin: 0;
   line-height: 1.5;
   height: 40px;
@@ -344,15 +344,15 @@ function removePrompt(row) {
 
 /* 内容预览区域 */
 .content-preview {
-  background-color: #f8f9fa;
+  background-color: var(--el-fill-color-light);
   border-radius: 6px;
   padding: 10px;
-  border: 1px solid #f0f2f5;
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .prompt-content {
   font-size: 12px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin: 0;
   line-height: 1.6;
   height: 58px;
@@ -365,21 +365,16 @@ function removePrompt(row) {
 }
 
 .el-button.is-plain.el-button--danger {
-  border: 1px solid #f56c6c;
-  /* 红色边框 */
-  color: #f56c6c;
-  /* 红色文字 */
-  background: #fef0f0;
-  /* 淡红背景 */
+  border: 1px solid var(--el-color-danger);
+  color: var(--el-color-danger);
+  background: var(--el-color-danger-light-9);
   font-weight: 600;
   transition: all 0.2s ease;
 }
 
 .el-button.is-plain.el-button--danger:hover {
-  background: #f56c6c;
-  /* 红底 */
-  color: #fff;
-  /* 白字 */
+  background: var(--el-color-danger);
+  color: var(--el-color-white);
   box-shadow: 0 2px 8px rgba(245, 108, 108, 0.3);
 }
 </style>
