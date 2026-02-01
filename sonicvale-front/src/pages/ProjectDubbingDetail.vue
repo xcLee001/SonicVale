@@ -250,6 +250,8 @@
 
                             <el-switch v-model="playMode" active-text="顺序播放" inactive-text="单条播放"
                                 active-value="sequential" inactive-value="single" />
+                            <el-switch v-model="completionSoundEnabled" class="ml8" active-text="提示音开"
+                                inactive-text="提示音关" />
 
 
                         </div>
@@ -766,12 +768,13 @@ function connectWS() {
                 applyLineUpdate(msg)
                 queue_rest_size.value = msg.progress
                 if (msg.progress === 0 && msg.status !== 'processing') {
-                    // 播放简短提示音
-                    const audio = new Audio(new URL('../assets/完成提示音.mp3', import.meta.url).href)
-                    audio.volume = 0.3  // ← 调低音量到 30%，你可以调到 0.1~0.5 之间
-                    audio.play().catch(err => {
-                        console.warn('播放完成提示音失败：', err)
-                    })
+                    if (completionSoundEnabled.value) {
+                        const audio = new Audio(new URL('../assets/完成提示音.mp3', import.meta.url).href)
+                        audio.volume = 0.2
+                        audio.play().catch(err => {
+                            console.warn('播放完成提示音失败：', err)
+                        })
+                    }
                     // 可配合消息提示
                     // ElMessage({
                     //     message: '🎵 所有音频已生成完成！',
@@ -2463,10 +2466,14 @@ async function batchAddTailSilence() {
 }
 // const playMode = ref('sequential') // 'single' = 单条, 'sequential' = 顺序
 const playMode = ref(localStorage.getItem('playMode') || 'sequential')
+const completionSoundEnabled = ref(localStorage.getItem('completionSoundEnabled') !== '0')
 
 // 监听 playMode 变化并存储到本地
 watch(playMode, (val) => {
     localStorage.setItem('playMode', val)
+})
+watch(completionSoundEnabled, (val) => {
+    localStorage.setItem('completionSoundEnabled', val ? '1' : '0')
 })
 // 处理 ended 事件
 function handleEnded({ handle, id }) {
