@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/飞书-使用教程-4285F4?logo=googleclassroom&logoColor=white" />
 </a>
 <img src="https://img.shields.io/badge/license-AGPLv3-blue?logo=gnu" />
-<img src="https://img.shields.io/badge/release-v1.1.0-brightgreen?logo=semver" />
+<img src="https://img.shields.io/badge/release-v1.1.2-brightgreen?logo=semver" />
 </p>
 
 > 一个开源的多角色、多情绪 AI 配音生成平台，支持小说、剧本、视频等内容的自动配音与导出。  
