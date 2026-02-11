@@ -23,6 +23,18 @@
                     精准填充：{{ project?.is_precise_fill == 1 ? '开启' : '关闭' }}
                 </el-tag>
 
+                <!-- 进度条 -->
+                <div class="ml8" style="width: 180px; display: inline-flex; align-items: center;" v-if="lines.length > 0">
+                    <el-progress 
+                        :class="{ 'gen-progress': generationProgress < 100 }"
+                        :percentage="generationProgress"
+                        :stroke-width="20"
+                        :text-inside="true"
+                        :format="() => `${generationStats.done} / ${generationStats.total}`"
+                        style="width: 100%"
+                    />
+                </div>
+
             </div>
             <div class="action-side">
                 <el-button @click="openProjectSettings">
@@ -1228,6 +1240,17 @@ async function splitByLLM() {
 
 // 台词列表
 const lines = ref([]) // LineResponseDTO[]
+
+// 进度统计
+const generationStats = computed(() => {
+    const total = lines.value.length
+    const done = lines.value.filter(l => l.status === 'done').length
+    return { total, done }
+})
+const generationProgress = computed(() => {
+    if (!generationStats.value.total) return 0
+    return Math.floor((generationStats.value.done / generationStats.value.total) * 100)
+})
 const activeTab = ref('lines')
 const lineKeyword = ref('')
 const roleFilter = ref(null)
@@ -4163,5 +4186,19 @@ function restoreLastChapter() {
     background: var(--el-fill-color-light);
     border-radius: 12px;
     color: var(--el-text-color-secondary);
+}
+
+/* 进度条未生成部分高亮 */
+.gen-progress :deep(.el-progress-bar__outer) {
+    background-color: #ffe6e6 !important;
+    border: 1px solid #ffcaca;
+}
+
+/* 进度条内部文字加粗加黑 */
+.gen-progress :deep(.el-progress-bar__innerText) {
+    color: #000000 !important;
+    font-weight: bold;
+    font-size: 13px;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
 }
 </style>
