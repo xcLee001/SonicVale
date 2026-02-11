@@ -22,8 +22,28 @@
       </div>
     </div>
 
+    <div class="filter-bar">
+      <el-select
+        ref="filterSelectRef"
+        v-model="filterTags"
+        multiple
+        filterable
+        clearable
+        collapse-tags
+        collapse-tags-tooltip
+        placeholder="标签筛选"
+        class="filter-tags"
+        @change="handleFilterTagChange"
+      >
+        <el-option v-for="tag in allTags" :key="tag" :label="tag" :value="tag" />
+      </el-select>
+      <el-input v-model="searchName" placeholder="按名称搜索" clearable class="filter-search" />
+      <el-button plain :disabled="!searchName && !filterTags.length" @click="resetFilters">重置筛选</el-button>
+      <div class="filter-result">共 {{ filteredVoices.length }} 条</div>
+    </div>
+
     <el-table
-      :data="voices"
+      :data="filteredVoices"
       ref="voiceTableRef"
       border
       stripe
@@ -290,6 +310,33 @@ const voiceTableRef = ref(null)
 const selectedRows = ref([])
 const selectedIds = computed(() => (selectedRows.value || []).map(v => v?.id).filter(v => v !== null && v !== undefined))
 const selectedCount = computed(() => selectedIds.value.length)
+
+const filterTags = ref([])
+const searchName = ref('')
+const filterSelectRef = ref(null)
+
+const allTags = computed(() => {
+  const set = new Set()
+  defaultTags.value.forEach(t => t && set.add(t))
+  voices.value.forEach(v => {
+    const tags = v.description ? v.description.split(',') : []
+    tags.map(t => t.trim()).filter(Boolean).forEach(t => set.add(t))
+  })
+  return Array.from(set)
+})
+
+const filteredVoices = computed(() => {
+  const name = searchName.value.trim()
+  const nameLower = name.toLowerCase()
+  return voices.value.filter(v => {
+    const voiceName = (v.name || '').toString()
+    const matchName = !name || voiceName.toLowerCase().includes(nameLower)
+    if (!filterTags.value.length) return matchName
+    const tags = v.description ? v.description.split(',').map(t => t.trim()).filter(Boolean) : []
+    const matchTags = filterTags.value.every(ft => tags.includes(ft))
+    return matchName && matchTags
+  })
+})
 
 function handleSelectionChange(rows) {
   selectedRows.value = rows || []
@@ -567,6 +614,17 @@ function handleTagChange() {
   }, 0)
 }
 
+function handleFilterTagChange() {
+  setTimeout(() => {
+    filterSelectRef.value?.blur()
+  }, 0)
+}
+
+function resetFilters() {
+  searchName.value = ''
+  filterTags.value = []
+}
+
 async function handleExportSelected() {
   if (!selectedTTS.value) {
     ElMessage.warning('请先选择 TTS 引擎')
@@ -769,6 +827,22 @@ async function confirmCopy() {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.filter-tags {
+  width: 260px;
+}
+.filter-search {
+  width: 220px;
+}
+.filter-result {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
 }
 .tts-select {
   width: 240px;
