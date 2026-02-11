@@ -12,7 +12,39 @@
         <el-table :data="llmList" stripe border highlight-current-row class="styled-table">
           <el-table-column prop="name" label="名称" min-width="160" />
           <el-table-column prop="api_base_url" label="Base URL" min-width="240" />
-          <el-table-column prop="model_list" label="模型列表" min-width="240" />
+          <el-table-column prop="model_list" label="模型列表" min-width="240">
+            <template #default="{ row }">
+              <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1;">
+                  <el-tooltip
+                    v-for="(item, idx) in (row.model_list || '').split(/[,，]/).filter(s => s.trim())"
+                    :key="idx"
+                    content="点击复制"
+                    placement="top"
+                    :show-after="500"
+                  >
+                    <el-tag
+                      size="small"
+                      effect="plain"
+                      style="cursor: pointer;"
+                      @click="copyText(item.trim())"
+                    >
+                      {{ item.trim() }}
+                    </el-tag>
+                  </el-tooltip>
+                </div>
+                <el-tooltip content="复制全部模型" placement="top">
+                  <el-button
+                    type="info"
+                    link
+                    :icon="CopyDocument"
+                    @click="copyText(row.model_list)"
+                    style="padding: 0; height: auto;"
+                  />
+                </el-tooltip>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column label="API Key" min-width="180">
             <template #default="{ row }">
               <span class="api-key">{{ maskKey(row.api_key) }}</span>
@@ -103,7 +135,17 @@
           <el-input v-model="llmForm.api_key" placeholder="可留空" show-password />
         </el-form-item>
         <el-form-item label="模型列表">
-          <el-input v-model="llmForm.model_list" placeholder="用英文逗号分隔" />
+          <el-select
+            v-model="currentModelList"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            :reserve-keyword="false"
+            placeholder="输入模型后回车"
+            style="width: 100%"
+          >
+          </el-select>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="llmForm.status" :active-value="1" :inactive-value="0" />
@@ -154,8 +196,9 @@
 
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { CopyDocument } from '@element-plus/icons-vue'
 import {
   fetchLLMProviders, createLLMProvider, updateLLMProvider, deleteLLMProvider,
   fetchTTSProviders, updateTTSProvider, testLLMProvider, testTTSProvider
@@ -215,6 +258,59 @@ const llmRules = {
     }
   ]
 }
+
+const currentModelList = ref([])
+
+// 监听弹窗打开，初始化 currentModelList
+watch(() => llmDialogVisible.value, (val) => {
+  if (val) {
+    if (llmForm.value.model_list) {
+      currentModelList.value = llmForm.value.model_list
+        .split(/[,，]/)
+        .map(s => s.trim())
+        .filter(s => s)
+    } else {
+      currentModelList.value = []
+    }
+  } else {
+    currentModelList.value = []
+  }
+})
+
+// 监听 currentModelList 变化，同步回 llmForm.model_list
+watch(currentModelList, (val) => {
+  // 如果输入包含逗号，自动分割
+  let hasSplit = false
+  const processedList = []
+
+  for (const item of val) {
+    if (item && (item.includes(',') || item.includes('，'))) {
+      const parts = item.split(/[,，]/).map(s => s.trim()).filter(s => s)
+      processedList.push(...parts)
+      hasSplit = true
+    } else {
+      processedList.push(item)
+    }
+  }
+
+  if (hasSplit) {
+    // 去重并更新 currentModelList
+    currentModelList.value = [...new Set(processedList)]
+    return
+  }
+
+  llmForm.value.model_list = val.join(',')
+}, { deep: true })
+
+const copyText = (text) => {
+  if (!text) return
+  navigator.clipboard.writeText(text).then(() => {
+    ElMessage.success('已复制')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
 function openLLMDialog(row) {
   if (row) llmForm.value = { ...row }
   else llmForm.value = { id: null, name: '', api_base_url: '', api_key: '', model_list: '', status: 1, custom_params: DEFAULT_CUSTOM_PARAMS }
