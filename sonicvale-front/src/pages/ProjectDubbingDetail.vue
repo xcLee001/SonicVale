@@ -215,45 +215,96 @@
                     <!-- 台词管理 -->
                     <el-tab-pane label="台词管理" name="lines">
                         <div class="toolbar">
-                            <el-select v-model="roleFilter" clearable filterable placeholder="按角色筛选" class="w220">
-                                <el-option v-for="r in roles" :key="r.id" :label="r.name" :value="r.id" />
-                            </el-select>
-                            <el-input v-model="lineKeyword" placeholder="搜索台词文本" clearable class="w300 ml8" />
-                            <el-button @click="loadLines" class="ml8">
-                                <el-icon>
-                                    <Refresh />
-                                </el-icon> 刷新
-                            </el-button>
-                            <el-button type="primary" @click="generateAll" class="ml8">
-                                <el-icon>
-                                    <Headset />
-                                </el-icon> 批量生成音频
-                            </el-button>
-                            <el-button type="warning" @click="batchAddTailSilence" class="ml8">
-                                <el-icon>
-                                    <Mute />
-                                </el-icon>
-                                批量添加间隔时间
-                            </el-button>
+                            <!-- 左侧：筛选区 -->
+                            <div class="toolbar-group">
+                                <el-select v-model="roleFilter" clearable filterable placeholder="按角色筛选" class="filter-item w200">
+                                    <el-option v-for="r in roles" :key="r.id" :label="r.name" :value="r.id" />
+                                </el-select>
+                                <el-input v-model="lineKeyword" placeholder="搜索台词" clearable class="filter-item w220">
+                                    <template #prefix>
+                                        <el-icon>
+                                            <Search />
+                                        </el-icon>
+                                    </template>
+                                </el-input>
+                                <el-tooltip content="刷新列表" placement="top">
+                                    <el-button @click="loadLines" circle plain>
+                                        <el-icon>
+                                            <Refresh />
+                                        </el-icon>
+                                    </el-button>
+                                </el-tooltip>
+                            </div>
 
-                            <el-button type="success" @click="markAllAsCompleted">
-                                <el-icon>
-                                    <Check />
-                                </el-icon> 导出配音与字幕
-                            </el-button>
-                            <el-button type="danger" @click="handleCorrectSubtitles">
-                                <el-icon>
-                                    <Edit />
-                                </el-icon>
-                                矫正字幕
-                            </el-button>
+                            <!-- 中间：操作区 -->
+                            <div class="toolbar-group">
+                                <el-button type="primary" @click="generateAll">
+                                    <el-icon class="mr-1">
+                                        <Headset />
+                                    </el-icon> 批量生成
+                                </el-button>
 
-                            <el-switch v-model="playMode" active-text="顺序播放" inactive-text="单条播放"
-                                active-value="sequential" inactive-value="single" />
-                            <el-switch v-model="completionSoundEnabled" class="ml8" active-text="提示音开"
-                                inactive-text="提示音关" />
+                                <el-dropdown trigger="click">
+                                    <el-button type="primary" plain>
+                                        <el-icon class="mr-1">
+                                            <Operation />
+                                        </el-icon> 批量处理
+                                        <el-icon class="el-icon--right">
+                                            <ArrowDown />
+                                        </el-icon>
+                                    </el-button>
+                                    <template #dropdown>
+                                        <el-dropdown-menu>
+                                            <el-dropdown-item @click="batchAddTailSilence">
+                                                <el-icon>
+                                                    <Mute />
+                                                </el-icon> 批量添加间隔
+                                            </el-dropdown-item>
+                                            <el-dropdown-item @click="batchProcessSpeed">
+                                                <el-icon>
+                                                    <Odometer />
+                                                </el-icon> 批量变速
+                                            </el-dropdown-item>
+                                            <el-dropdown-item @click="batchProcessVolume">
+                                                <el-icon>
+                                                    <Microphone />
+                                                </el-icon> 批量调音
+                                            </el-dropdown-item>
+                                        </el-dropdown-menu>
+                                    </template>
+                                </el-dropdown>
 
+                                <el-divider direction="vertical" class="toolbar-divider" />
 
+                                <el-tooltip content="导出配音与字幕" placement="top">
+                                    <el-button type="success" plain @click="markAllAsCompleted">
+                                        <el-icon class="mr-1">
+                                            <Check />
+                                        </el-icon> 导出
+                                    </el-button>
+                                </el-tooltip>
+                                <el-tooltip content="一键矫正字幕" placement="top">
+                                    <el-button type="danger" plain @click="handleCorrectSubtitles">
+                                        <el-icon class="mr-1">
+                                            <Edit />
+                                        </el-icon> 矫正
+                                    </el-button>
+                                </el-tooltip>
+                            </div>
+
+                            <!-- 右侧：设置区 -->
+                            <div class="toolbar-group ml-auto">
+                                <div class="switch-item" @click="playMode = playMode === 'sequential' ? 'single' : 'sequential'">
+                                    <span class="switch-label">连播</span>
+                                    <el-switch v-model="playMode" active-value="sequential" inactive-value="single"
+                                        inline-prompt active-text="开" inactive-text="关" @click.stop />
+                                </div>
+                                <div class="switch-item" @click="completionSoundEnabled = !completionSoundEnabled">
+                                    <span class="switch-label">提示音</span>
+                                    <el-switch v-model="completionSoundEnabled" inline-prompt active-text="开"
+                                        inactive-text="关" @click.stop />
+                                </div>
+                            </div>
                         </div>
 
                         <!-- ✅ 新版：虚拟滚动表格 -->
@@ -269,32 +320,37 @@
                     <el-tab-pane label="角色库" name="roles">
 
                         <div class="toolbar">
-                            <el-input v-model="roleKeyword" placeholder="搜索角色" clearable class="w260" />
-                            <el-button @click="loadRoles" class="ml8">
+                            <el-input v-model="roleKeyword" placeholder="搜索角色" clearable class="w260">
+                                <template #prefix>
+                                    <el-icon>
+                                        <Search />
+                                    </el-icon>
+                                </template>
+                            </el-input>
+                            <el-button @click="loadRoles" circle plain title="刷新">
                                 <el-icon>
                                     <Refresh />
-                                </el-icon> 刷新
+                                </el-icon>
                             </el-button>
-                            <el-button class="ml8" type="primary" @click="$router.push('/voices')">
-                                <el-icon>
+                            <el-divider direction="vertical" class="toolbar-divider" />
+                            <el-button type="primary" @click="$router.push('/voices')">
+                                <el-icon class="mr-1">
                                     <Plus />
                                 </el-icon> 管理音色库
                             </el-button>
                             <el-button type="success" @click="openCreateRole">
-                                <el-icon>
+                                <el-icon class="mr-1">
                                     <Plus />
                                 </el-icon> 新建角色
                             </el-button>
                             <el-tooltip placement="top" content="此功能为测试版，结果可能不稳定，并且效果依赖于音色的标签，因此尽可能完善丰富音色标签。">
                                 <el-button type="danger" @click="addSmartRoleAndVoice">
-                                    <el-icon>
+                                    <el-icon class="mr-1">
                                         <MagicStick />
                                     </el-icon>
                                     智能匹配音色（Beta）
                                 </el-button>
                             </el-tooltip>
-
-
                         </div>
 
                         <div class="role-grid">
@@ -617,7 +673,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
     Lock, Unlock, ArrowLeft, Setting, Headset, Menu, Plus, Search, Edit, Delete, Refresh, MagicStick, Document, CaretBottom, CaretRight, Upload, VideoPlay, VideoPause, Mute, Check,
-    CircleCheck, CircleClose, QuestionFilled
+    CircleCheck, CircleClose, QuestionFilled, Odometer, Microphone, ArrowDown, Operation
 } from '@element-plus/icons-vue'
 import service from '../api/config'
 import * as chapterAPI from '../api/chapter'
@@ -2464,6 +2520,144 @@ async function batchAddTailSilence() {
         // 用户取消输入
     }
 }
+
+async function batchProcessSpeed() {
+    const list = displayedLines.value
+    if (!list.length) return ElMessage.info('当前无台词')
+
+    try {
+        const { value } = await ElMessageBox.prompt(
+            '请输入速度倍率（0.5 ~ 2.0）',
+            '批量改变速度',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                inputPattern: /^\d+(\.\d+)?$/,
+                inputErrorMessage: '请输入合法数字',
+            }
+        )
+
+        const speed = Number(value)
+        if (!Number.isFinite(speed) || speed < 0.5 || speed > 2.0) {
+            return ElMessage.warning('速度倍率范围应为 0.5 ~ 2.0')
+        }
+
+        const loading = ElLoading.service({
+            lock: true,
+            text: '正在批量处理音频...',
+            background: 'rgba(0,0,0,0.3)',
+        })
+
+        let ok = 0, fail = 0, skip = 0
+        for (const row of list) {
+            if (!row.audio_path) {
+                skip++
+                continue
+            }
+
+            const startMs = Number.isFinite(Number(row.start_ms)) ? Number(row.start_ms) : null
+            const endMs = Number.isFinite(Number(row.end_ms)) ? Number(row.end_ms) : null
+            const useCut = startMs != null && endMs != null && endMs > startMs
+
+            try {
+                const res = await lineAPI.processAudio(row.id, {
+                    speed,
+                    volume: Number(row._procVolume || 1.0),
+                    start_ms: useCut ? startMs : null,
+                    end_ms: useCut ? endMs : null,
+                    silence_sec: 0,
+                    current_ms: null
+                })
+                if (res?.code === 200) {
+                    // row._procSpeed = speed
+                    bumpVer(row.id)
+                    ok++
+                    if (row.is_done !== 0) {
+                        row.is_done = 0
+                        await updateLineIsDone(row, 0)
+                    }
+                } else {
+                    fail++
+                }
+            } catch {
+                fail++
+            }
+        }
+
+        loading.close()
+        ElMessage.success(`批量完成：成功 ${ok} 条，跳过 ${skip} 条，失败 ${fail} 条`)
+    } catch {
+    }
+}
+
+async function batchProcessVolume() {
+    const list = displayedLines.value
+    if (!list.length) return ElMessage.info('当前无台词')
+
+    try {
+        const { value } = await ElMessageBox.prompt(
+            '请输入音量倍率（0.0 ~ 2.0）',
+            '批量调整音量',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                inputPattern: /^\d+(\.\d+)?$/,
+                inputErrorMessage: '请输入合法数字',
+            }
+        )
+
+        const volume = Number(value)
+        if (!Number.isFinite(volume) || volume < 0 || volume > 2.0) {
+            return ElMessage.warning('音量倍率范围应为 0.0 ~ 2.0')
+        }
+
+        const loading = ElLoading.service({
+            lock: true,
+            text: '正在批量处理音频...',
+            background: 'rgba(0,0,0,0.3)',
+        })
+
+        let ok = 0, fail = 0, skip = 0
+        for (const row of list) {
+            if (!row.audio_path) {
+                skip++
+                continue
+            }
+
+            const startMs = Number.isFinite(Number(row.start_ms)) ? Number(row.start_ms) : null
+            const endMs = Number.isFinite(Number(row.end_ms)) ? Number(row.end_ms) : null
+            const useCut = startMs != null && endMs != null && endMs > startMs
+
+            try {
+                const res = await lineAPI.processAudio(row.id, {
+                    speed: Number(row._procSpeed || 1.0),
+                    volume,
+                    start_ms: useCut ? startMs : null,
+                    end_ms: useCut ? endMs : null,
+                    silence_sec: 0,
+                    current_ms: null
+                })
+                if (res?.code === 200) {
+                    // row._procVolume = volume
+                    bumpVer(row.id)
+                    ok++
+                    if (row.is_done !== 0) {
+                        row.is_done = 0
+                        await updateLineIsDone(row, 0)
+                    }
+                } else {
+                    fail++
+                }
+            } catch {
+                fail++
+            }
+        }
+
+        loading.close()
+        ElMessage.success(`批量完成：成功 ${ok} 条，跳过 ${skip} 条，失败 ${fail} 条`)
+    } catch {
+    }
+}
 // const playMode = ref('sequential') // 'single' = 单条, 'sequential' = 顺序
 const playMode = ref('sequential')
 try { playMode.value = localStorage.getItem('playMode') || 'sequential' } catch { }
@@ -3547,18 +3741,60 @@ function restoreLastChapter() {
 
 /* 表格容器吃掉剩余高度 */
 .toolbar {
-
+    height: 56px;
     display: flex;
     align-items: center;
+    /* justify-content: space-between; Removed to keep left alignment for first two groups */
     border-bottom: 1px solid var(--el-border-color-lighter);
     background: var(--el-bg-color);
-    padding: 0 12px;
-
+    padding: 0 20px;
+    gap: 16px;
 }
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.filter-item.w200 {
+    width: 130px;
+}
+
+.filter-item.w220 {
+    width: 130px;
+}
+
+.toolbar-divider {
+    height: 24px;
+    margin: 0 8px;
+    border-color: var(--el-border-color);
+}
+
+.switch-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.switch-item:hover {
+    background-color: var(--el-fill-color-light);
+}
+
+.switch-label {
+    font-size: 13px;
+    color: var(--el-text-color-regular);
+    user-select: none;
+}
+
 
 .table-box {
     position: absolute;
-    top: 45px;
+    top: 57px;
     /* ✅ 跟 toolbar 高度一致 */
     bottom: 0;
     left: 0;
