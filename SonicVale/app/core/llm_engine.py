@@ -124,7 +124,7 @@ class LLMEngine:
                 delta = chunk.choices[0].delta
                 content = delta.content if hasattr(delta, 'content') else None
                 if content:
-                    print(content, end="", flush=True)
+                    # print(content, end="", flush=True)
                     full_text += content
 
         print()  # 换行
