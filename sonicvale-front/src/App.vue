@@ -51,7 +51,7 @@
 
       <div class="sider-info" v-if="!collapsed">
         <div class="info-item">版本：v1.1.4</div>
-        <div class="info-item">配音交流群：608755030（如果群已经满，请按照申请提示进入其他群）</div>
+        <div class="info-item">配音交流群：1080986764（如果群已经满，请按照申请提示进入其他群）</div>
         <!-- 🔔 醒目声明 -->
         <div class="info-warning">
           
