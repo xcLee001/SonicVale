@@ -1285,8 +1285,12 @@ async function loadLines() {
     lines.value = res?.code === 200 ? (res.data || []) : []
     // 音频默认参数：
     stats.value.lineCount = lines.value.length
-    // ✅ 关键：当生成完成或路径发生变化时，强制重载对应 WaveCellPro
-
+    // ✅ 关键：刷新所有行的音频版本号，强制 WaveCellPro 重新加载音频
+    lines.value.forEach(row => {
+        if (row.audio_path) {
+            bumpVer(row.id)
+        }
+    })
 }
 
 // async function doProcess(row) {
