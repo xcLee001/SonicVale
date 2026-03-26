@@ -32,6 +32,21 @@ import sys
 
 root_path = os.getcwd()
 sys.path.append(root_path)
+
+# =========================
+# 日志配置（同时输出到控制台和文件）
+# =========================
+log_file_path = os.path.join(getConfigPath(), "app.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),  # 控制台输出
+        logging.FileHandler(log_file_path, encoding='utf-8')  # 文件输出
+    ]
+)
+logging.info(f"日志文件路径: {log_file_path}")
+
 # =========================
 # FastAPI 实例
 # =========================
