@@ -142,22 +142,38 @@ class LineService:
     def generate_audio(self, reference_path: str,tts_provider_id,content,emo_text:str,emo_vector:list[float],save_path= None):
         #
         tts_provider = self.tts_provider_repository.get_by_id(tts_provider_id)
+        if tts_provider is None:
+            raise Exception(f"TTS服务提供商不存在（ID: {tts_provider_id}）")
+        
+        if not tts_provider.api_base_url:
+            raise Exception("TTS服务地址未配置，请先在配置中心设置TTS服务")
+            
         tts_engine = TTSEngine(tts_provider.api_base_url)
-        # 先判断是否存在
+        
+        # 检查参考音频路径是否有效
+        if not reference_path:
+            raise Exception("参考音频路径未设置，请检查角色音色配置")
 
-
-        # if not tts_engine.check_audio_exists(filename):
-        #     # 不存在就先上传
-        #     tts_engine.upload_audio(reference_path)
-        # return tts_engine.synthesize(content, filename,save_path)
         key = _lock_key(reference_path)
         lock = _file_locks[key]
 
         with lock:
-            if not tts_engine.check_audio_exists(reference_path):
-                tts_engine.upload_audio(reference_path,reference_path)
-            #     添加emo_text
-            return tts_engine.synthesize(content, reference_path,emo_text, emo_vector,save_path)
+            try:
+                audio_exists = tts_engine.check_audio_exists(reference_path)
+            except Exception as e:
+                raise Exception(f"检查参考音频失败: {str(e)}")
+            
+            if not audio_exists:
+                # 检查本地文件是否存在
+                if not os.path.isfile(reference_path):
+                    raise Exception(f"参考音频文件不存在: {reference_path}")
+                
+                upload_result = tts_engine.upload_audio(reference_path, reference_path)
+                if upload_result.get('code') and upload_result.get('code') != 200:
+                    raise Exception(f"上传参考音频失败: {upload_result.get('msg', '未知错误')}")
+            
+            # 合成音频
+            return tts_engine.synthesize(content, reference_path, emo_text, emo_vector, save_path)
 
     # 将角色role_id下所有台词的role_id都置位空
     def clear_role_id(self, role_id: int):

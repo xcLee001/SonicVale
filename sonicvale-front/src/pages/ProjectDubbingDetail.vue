@@ -834,6 +834,15 @@ function connectWS() {
                 // console.log(`[${new Date().toLocaleTimeString()}] #${msg.line_id} ${meta}`)
                 addQueue({ title: `台词 #${msg.line_id}`, meta, type })
                 applyLineUpdate(msg)
+                
+                // 生成失败时弹出明显的错误提示
+                if (msg.status === 'failed') {
+                    ElMessage.error({
+                        message: `台词 #${msg.line_id} 生成失败: ${msg.meta || '未知错误'}`,
+                        duration: 5000,
+                        showClose: true
+                    })
+                }
                 queue_rest_size.value = msg.progress
                 if (msg.progress === 0 && msg.status !== 'processing') {
                     if (completionSoundEnabled.value === true) {

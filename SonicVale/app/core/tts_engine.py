@@ -37,17 +37,35 @@ class TTSEngine:
         elif emo_text:
             payload["emo_text"] = emo_text
 
-        resp = requests.post(url, json=payload)
-        if resp.status_code != 200:
-            raise Exception(f"Synthesis failed: {resp.text}")
+        try:
+            resp = requests.post(url, json=payload, timeout=120)
+            if resp.status_code != 200:
+                # 尝试解析错误信息
+                try:
+                    error_data = resp.json()
+                    error_msg = error_data.get('detail') or error_data.get('message') or error_data.get('msg') or resp.text
+                except:
+                    error_msg = resp.text
+                raise Exception(f"TTS服务返回错误({resp.status_code}): {error_msg}")
 
-        audio_bytes = resp.content
+            audio_bytes = resp.content
+            
+            # 检查返回的内容是否为有效音频
+            if len(audio_bytes) < 100:
+                raise Exception(f"TTS服务返回的音频数据无效，大小: {len(audio_bytes)} 字节")
 
-        if save_path:
-            with open(save_path, "wb") as f:
-                f.write(audio_bytes)
+            if save_path:
+                with open(save_path, "wb") as f:
+                    f.write(audio_bytes)
 
-        return audio_bytes
+            return audio_bytes
+            
+        except requests.exceptions.ConnectionError:
+            raise Exception(f"TTS服务连接失败，请检查TTS服务是否已启动 ({self.base_url})")
+        except requests.exceptions.Timeout:
+            raise Exception(f"TTS服务请求超时，请检查TTS服务是否正常运行")
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"TTS服务请求异常: {str(e)}")
 
     def get_models(self) -> dict:
         """
