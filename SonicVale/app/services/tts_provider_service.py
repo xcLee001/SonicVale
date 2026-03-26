@@ -1,4 +1,5 @@
 import requests
+import logging
 from sqlalchemy import Sequence
 
 from app.entity.tts_provider_entity import TTSProviderEntity
@@ -72,18 +73,17 @@ class TTSProviderService:
                     if "endpoints" in data:
                         return True
                     else:
-                        print("TTS provider test failed: 'endpoints' missing in response")
+                        logging.error("TTS provider test failed: 'endpoints' missing in response")
                         return False
                 except ValueError:
-                    print("TTS provider test failed: response is not valid JSON")
+                    logging.error("TTS provider test failed: response is not valid JSON")
                     return False
             else:
-                print(f"TTS provider test failed: status {resp.status_code}")
+                logging.error("TTS provider test failed: status %s", resp.status_code)
                 return False
 
         except Exception as e:
-            # 这里可以打印日志，方便排查
-            print(f"TTS provider test failed: {e}")
+            logging.exception("TTS provider test failed: %s", e)
             return False
 
 

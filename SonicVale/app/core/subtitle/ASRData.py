@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from typing import List
 from pathlib import Path
@@ -87,7 +88,7 @@ class ASRData:
             # 检查是否只包含一个英文单词或一个汉字
             if (len(text.split()) == 1 and text.isascii()) or len(text.strip()) <= 2:
                 valid_segments += 1
-        print(f"valid_segments: {valid_segments}, total_segments: {total_segments}")
+        logging.info("valid_segments: %s, total_segments: %s", valid_segments, total_segments)
         return (valid_segments / total_segments) >= 0.8
 
 
@@ -518,7 +519,7 @@ Style: Secondary,微软雅黑,40,&H00ffffff,&H000000FF,&H00000000,&H00000000,-1,
     srt_file_path = r"E:\GithubProject\VideoCaptioner\app\work_dir\低视力音乐助人者_mp4\result_subtitle.srt"
     asr_data = from_srt(Path(srt_file_path).read_text(encoding="utf-8"))
 
-    print(asr_data.to_ass(style_str=ass_style_str, save_path=srt_file_path.replace(".srt", ".ass")))
+    logging.info("%s", asr_data.to_ass(style_str=ass_style_str, save_path=srt_file_path.replace(".srt", ".ass")))
     # pass
     # asr_data = ASRData(seg)
     # Uncomment to test different formats:
@@ -527,7 +528,6 @@ Style: Secondary,微软雅黑,40,&H00ffffff,&H000000FF,&H00000000,&H00000000,-1,
     # print(asr_data.to_txt())
     # print(asr_data.to_json())
     # print(asr_data.to_json())
-
 
 
 

@@ -187,7 +187,7 @@ async def get_lines(
         return Res(data=None, code=400, message="章节内容不存在")
     try:
         contents = chapter_service.split_text(chapter_id, 1500)
-        print("内容划分为", len(contents), "段")
+        logging.info("内容划分为 %s 段", len(contents))
     except Exception as e:
         logging.error(f"章节拆分失败: {e}\n{traceback.format_exc()}")
         return Res(data=None, code=500, message="章节拆分失败")

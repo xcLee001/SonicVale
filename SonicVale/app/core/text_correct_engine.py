@@ -1,6 +1,7 @@
 import re
 import json
 import difflib
+import logging
 from typing import List, Dict, Tuple, Optional
 
 
@@ -133,7 +134,7 @@ class TextCorrectorFinal:
 
             corrected_sentences_for_item = []
 
-            print(f"\n处理角色: {ai_item['role_name']} (AI原文: '{ai_text[:50]}')")
+            logging.info("处理角色: %s (AI原文: '%s')", ai_item['role_name'], ai_text[:50])
 
             for ai_sentence in ai_sentences:
                 match_index, similarity = self.find_best_sentence_match(
@@ -145,10 +146,10 @@ class TextCorrectorFinal:
                     corrected_sentences_for_item.append(original_match)
                     used_original_indices.add(match_index)
                     current_original_index = match_index + 1
-                    print(f"匹配成功 (相似度: {similarity:.2f}): AI='{ai_sentence}' -> 原文='{original_match}'")
+                    logging.info("匹配成功 (相似度: %.2f): AI='%s' -> 原文='%s'", similarity, ai_sentence, original_match)
                 else:
                     corrected_sentences_for_item.append(ai_sentence)
-                    print(f"匹配失败 (最高相似度: {similarity:.2f})，保留AI原句: '{ai_sentence}'")
+                    logging.warning("匹配失败 (最高相似度: %.2f)，保留AI原句: '%s'", similarity, ai_sentence)
 
             # 最终清理
             corrected_text = self.clean_text(" ".join(corrected_sentences_for_item))
@@ -161,7 +162,7 @@ class TextCorrectorFinal:
         # 处理遗漏的原文句子
         missing_indices = sorted(list(set(range(len(original_sentences))) - used_original_indices))
         if missing_indices:
-            print(f"\n发现 {len(missing_indices)} 个遗漏句子，正在插入...")
+            logging.info("发现 %d 个遗漏句子，正在插入...", len(missing_indices))
 
             final_data = []
             original_cursor = 0
@@ -172,7 +173,7 @@ class TextCorrectorFinal:
                     # 插入遗漏的句子
                     missing_sentence = self.clean_text(original_sentences[original_cursor])
                     if missing_sentence:
-                        print(f"  -> 插入遗漏句子: '{missing_sentence}'")
+                        logging.info("插入遗漏句子: '%s'", missing_sentence)
                         final_data.append({
                             'role_name': '旁白',
                             'text_content': missing_sentence,
@@ -204,10 +205,10 @@ def read_files():
             ai_data = json.load(f)
         return original_text, ai_data
     except FileNotFoundError as e:
-        print(f"文件读取错误: {e}")
+        logging.error("文件读取错误: %s", e)
         return None, None
     except json.JSONDecodeError as e:
-        print(f"JSON解析错误: {e}")
+        logging.error("JSON解析错误: %s", e)
         return None, None
 
 
@@ -216,9 +217,9 @@ def save_corrected_data(corrected_data: List[Dict]):
     try:
         with open('校正后的文本_final.json', 'w', encoding='utf-8') as f:
             json.dump(corrected_data, f, ensure_ascii=False, indent=4)
-        print("\n校正结果已保存到: 校正后的文本_final.json")
+        logging.info("校正结果已保存到: 校正后的文本_final.json")
     except Exception as e:
-        print(f"保存文件时出错: {e}")
+        logging.error("保存文件时出错: %s", e)
 
 
 def main():
@@ -226,14 +227,14 @@ def main():
     if original_text is None or ai_data is None:
         return
 
-    print("文件读取成功！开始校正...")
+    logging.info("文件读取成功！开始校正...")
 
     corrector = TextCorrectorFinal()
     corrected_data = corrector.correct_ai_text(original_text, ai_data)
 
     save_corrected_data(corrected_data)
 
-    print("\n校正完成！")
+    logging.info("校正完成！")
 
 
 if __name__ == "__main__":

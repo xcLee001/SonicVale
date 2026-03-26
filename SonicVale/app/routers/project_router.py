@@ -1,5 +1,6 @@
 import os
 import shutil
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
@@ -123,9 +124,9 @@ def delete_project(project_id: int, service: ProjectService = Depends(get_servic
     project_path = os.path.join(project.project_root_path, str(project_id))
     if os.path.exists(project_path):
         shutil.rmtree(project_path)  # 删除整个文件夹及其所有内容
-        print(f"已删除目录及内容: {project_path}")
+        logging.info("已删除目录及内容: %s", project_path)
     else:
-        print(f"目录不存在: {project_path}")
+        logging.info("目录不存在: %s", project_path)
 
     # 还要删除角色库中projet下的所有角色
     roles = role_service.get_all_roles(project_id)
@@ -156,6 +157,6 @@ def import_project(project_id: int, dto: ProjectImportDTO,service: ProjectServic
     for chapter_content in chapter_contents:
         name = chapter_content["chapter_name"]
         content = chapter_content["content"]
-        print("批量创建章节", name)
+        logging.info("批量创建章节 %s", name)
         chapter_service.create_chapter(ChapterEntity(project_id=project_id, title=name, text_content=content))
     return Res(code=200, message="导入成功")

@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 
 from sqlalchemy import Sequence
 
@@ -26,7 +27,7 @@ class ProjectService:
             return None, "项目已存在"
         # 判断项目根路径是否存在
         if not os.path.exists(entity.project_root_path):
-            print("项目根路径不存在")
+            logging.info("项目根路径不存在")
             return  None, "项目根路径不存在"
         # 手动将entity转化为po
         po = ProjectPO(**entity.__dict__)

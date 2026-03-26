@@ -111,9 +111,9 @@ def add_custom_params_column():
                 {"val": default_json}
             )
 
-            print("已添加 custom_params 列并写入默认值。")
+            logging.info("已添加 custom_params 列并写入默认值。")
         else:
-            print("custom_params 列已存在，跳过。")
+            logging.info("custom_params 列已存在，跳过。")
 
 # 添加精准填充字段】
 def add_is_precise_fill_column():
@@ -207,7 +207,7 @@ async def startup_event():
         try:
             prompt_service = get_prompt_service(db)
             if not prompt_service.get_all_prompts():
-                print("创建默认提示词")
+                logging.info("创建默认提示词")
                 prompt_service.create_default_prompt()
             else:
                 default_prompt =  prompt_service.get_prompt_by_name("默认拆分台词提示词")
@@ -228,7 +228,7 @@ async def startup_event():
                 if not project.project_root_path:
                     project.project_root_path = getConfigPath()
                     project_service.update_project(project.id, project.__dict__)
-                    print("项目 %s 默认项目路径已修改为 %s" % (project.name, project.project_root_path))
+                    logging.info("项目 %s 默认项目路径已修改为 %s", project.name, project.project_root_path)
 
         #             todo:修改所有的保存路径，然后前端请求添加保存路径（利用electron读取文件夹路径）
         except Exception as e:
@@ -315,7 +315,7 @@ async def ws_endpoint(ws: WebSocket):
 
             # 👇 心跳处理：收到 ping 立即回复 pong
             if data.get("type") == "ping":
-                print("receive ping")
+                logging.debug("receive ping")
                 await ws.send_text(json.dumps({"type": "pong"}))
                 continue
 

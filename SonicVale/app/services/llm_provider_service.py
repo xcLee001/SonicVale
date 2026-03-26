@@ -1,4 +1,5 @@
 import json
+import logging
 
 from aiohttp.abc import HTTPException
 from sqlalchemy import Sequence
@@ -88,7 +89,7 @@ class LLMProviderService:
             res = llm.generate_text_test("请输出一份用户信息，严格使用 JSON 格式，不要包含任何额外文字。字段包括：name, age, city")
         except Exception as e:
             return  False,str(e)
-        print('测试结果为：', res)
+        logging.info("测试结果为：%s", res)
         if res is None:
             return False,"LLM 未返回任何内容"
 

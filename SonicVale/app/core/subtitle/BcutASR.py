@@ -161,4 +161,4 @@ if __name__ == '__main__':
     audio_file = r"test.mp3"
     asr = BcutASR(audio_file)
     asr_data = asr.run()
-    print(asr_data)
+    logging.info("%s", asr_data)

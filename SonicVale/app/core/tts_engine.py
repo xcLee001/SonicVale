@@ -1,6 +1,7 @@
 import requests
 from typing import Optional, List
 import os
+import logging
 
 class TTSEngine:
     def __init__(self, base_url: str):
@@ -108,13 +109,13 @@ if __name__ == "__main__":
 
     # 2. 检查音频是否存在
     exists = engine.check_audio_exists("C:\\Users\\lxc18\\Music\\多情绪\\吴泽\\解说\\中等.wav")
-    print("音频存在:", exists)
+    logging.info("音频存在: %s", exists)
 
     # 3. 获取模型列表
     models = engine.get_models()
-    print("模型信息:", models)
+    logging.info("模型信息: %s", models)
 
     # 4. 合成语音
     if exists:
         audio = engine.synthesize("萧炎，斗之力，三段！级别：低级！", "C:\\Users\\lxc18\\Music\\多情绪\\吴泽\\解说\\中等.wav",emo_text="愤怒", save_path="output.wav")
-        print(f"语音已保存到 output.wav, 大小 {len(audio)} 字节")
+        logging.info("语音已保存到 output.wav, 大小 %s 字节", len(audio))

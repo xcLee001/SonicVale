@@ -15,6 +15,7 @@ def generate_subtitle(audio_file,save_path):
 import re
 import difflib
 import shutil
+import logging
 from pypinyin import lazy_pinyin
 
 # -------------------- 基础工具 --------------------
@@ -180,13 +181,13 @@ def correct_srt_file(original_text: str, srt_path: str,
     if overwrite:
         if backup:
             shutil.copy(srt_path, srt_path + ".bak")
-            print(f"已生成备份文件：{srt_path}.bak")
+            logging.info("已生成备份文件：%s.bak", srt_path)
         target_path = srt_path
     else:
         target_path = out_path or (srt_path + ".corrected.srt")
 
     write_srt(target_path, corrected_entries)
-    print(f"已生成 {target_path} （逐行对齐修正完成）")
+    logging.info("已生成 %s （逐行对齐修正完成）", target_path)
 
 if __name__ == '__main__':
     generate_subtitle("C:\\Users\\lxc18\\SonicVale\\1\\1\\audio\\id_2.wav","C:\\Users\\lxc18\\SonicVale\\1\\1\\audio\\id_1.srt")

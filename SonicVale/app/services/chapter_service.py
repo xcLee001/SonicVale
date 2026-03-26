@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import shutil
@@ -43,7 +44,7 @@ class ChapterService:
 
         chapter = self.repository.get_by_name(entity.title, entity.project_id)
         if chapter:
-            print("同名章节已存在")
+            logging.info("同名章节已存在")
             return None
         # 手动将entity转化为po
         po = ChapterPO(**entity.__dict__)
@@ -108,9 +109,9 @@ class ChapterService:
             chapter_path = os.path.join(project.project_root_path, str(chapter.project_id), str(chapter_id))
             if os.path.exists(chapter_path):
                 shutil.rmtree(chapter_path)  # 删除整个文件夹及其所有内容
-                print(f"已删除目录及内容: {chapter_path}")
+                logging.info("已删除目录及内容: %s", chapter_path)
             else:
-                print(f"目录不存在: {chapter_path}")
+                logging.info("目录不存在: %s", chapter_path)
             #     先删除资源，再删除记录
             res = self.repository.delete(chapter_id)
             # 删除章节下所有台词
@@ -191,14 +192,14 @@ class ChapterService:
             llm = LLMEngine(llm_provider.api_key, llm_provider.api_base_url, project.llm_model, llm_provider.custom_params)
             try:
                 llm.generate_text_test("请输出一份用户信息，严格使用 JSON 格式，不要包含任何额外文字。字段包括：name, age, city")
-                print("LLM可用")
+                logging.info("LLM可用")
             except Exception as e:
-                print("LLM不可用")
+                logging.warning("LLM不可用")
                 return {
                     "success": False,
                     "message": f"LLM 不可用: {str(e)}"
                 }
-            print("开始内容解析")
+            logging.info("开始内容解析")
             try:
                 result = llm.generate_text(prompt)
                 # 解析json，并且构造为List[LineInitDTO]
@@ -212,7 +213,7 @@ class ChapterService:
                 # 这里进行自动填充
 
                 if is_precise_fill == 1:
-                    print("开始自动填充")
+                    logging.info("开始自动填充")
                     corrector = TextCorrectorFinal()
                     parsed_data = corrector.correct_ai_text(content, parsed_data)
 
@@ -225,7 +226,7 @@ class ChapterService:
                 }
 
             except Exception as e:
-                print("调用 LLM 出错：", e)
+                logging.exception("调用 LLM 出错: %s", e)
                 return {
                     "success": False,
                     "message": f"调用 LLM 出错: {str(e)}"
@@ -278,13 +279,13 @@ class ChapterService:
                 role = role_repository.get_by_name( item["role_name"],project.id)
                 if role:
                     if item["voice_name"]:
-                        print("更新角色音色：", item["role_name"], item["voice_name"])
+                        logging.info("更新角色音色：%s %s", item["role_name"], item["voice_name"])
                         role_repository.update(role.id, {"default_voice_id": voice_id_map.get(item["voice_name"])})
                         res.append({"role_name": item["role_name"], "voice_name": item["voice_name"]})
 
             return True,res
         except Exception as e:
-            print("LLM智能匹配出错：", e)
+            logging.exception("LLM智能匹配出错: %s", e)
             return False, []
         finally:
             db.close()

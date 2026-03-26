@@ -1,5 +1,6 @@
 # app/core/llm_engine.py
 import json
+import logging
 # app/core/llm_engine.py
 
 import re
@@ -127,5 +128,5 @@ class LLMEngine:
                     # print(content, end="", flush=True)
                     full_text += content
 
-        print()  # 换行
+        logging.debug("流式生成完成")
         return full_text

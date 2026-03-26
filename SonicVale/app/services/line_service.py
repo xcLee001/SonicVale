@@ -1,5 +1,6 @@
 import contextlib
 import hashlib
+import logging
 
 import shutil
 import subprocess
@@ -196,8 +197,7 @@ class LineService:
             return True
 
         except Exception as e:
-            # 可选：记录日志
-            print(f"[update_audio_path] 失败: {e}")
+            logging.exception("[update_audio_path] 失败: %s", e)
             return False
 
     def process_audio_ffmpeg(
@@ -494,17 +494,17 @@ class LineService:
             silence_sec = dto.silence_sec
             # ---------- (1) 优先裁剪 ----------
             if start_ms is not None and end_ms is not None and end_ms > start_ms:
-                print("裁剪")
+                logging.info("裁剪")
                 processor.cut(start_ms, end_ms)
 
             # ---------- (2) 插入静音 ----------
             elif current_ms is not None and silence_sec is not None and silence_sec != 0:
-                print("插入静音")
+                logging.info("插入静音")
                 processor.insert_silence(current_ms, silence_sec)
 
             # ---------- (3) 末尾静音/裁剪 ----------
             elif current_ms is None and silence_sec is not None and silence_sec != 0:
-                print("末尾静音/裁剪")
+                logging.info("末尾静音/裁剪")
                 processor.append_silence(silence_sec)
 
             # ---------- (4) 音量 + 变速 ----------
@@ -512,7 +512,7 @@ class LineService:
                 processor.change_speed(speed)
             if volume != 1.0:
                 processor.change_volume(volume)
-            print("音频处理完成")
+            logging.info("音频处理完成")
             return True
 
         else:
