@@ -1390,6 +1390,36 @@ async function generateOne(row) {
 }
 
 
+/**
+ * 并发限制执行器
+ * @param {Array} tasks - 任务数组
+ * @param {Function} fn - 异步执行函数，接收单个任务项
+ * @param {number} concurrency - 最大并发数
+ */
+async function runWithConcurrencyLimit(tasks, fn, concurrency = 5) {
+    const results = []
+    let index = 0
+
+    async function worker() {
+        while (index < tasks.length) {
+            const currentIndex = index++
+            try {
+                results[currentIndex] = await fn(tasks[currentIndex])
+            } catch (err) {
+                results[currentIndex] = { error: err }
+            }
+        }
+    }
+
+    // 启动 concurrency 个 worker 并行处理
+    const workers = Array(Math.min(concurrency, tasks.length))
+        .fill(null)
+        .map(() => worker())
+
+    await Promise.all(workers)
+    return results
+}
+
 function generateAll() {
     const todo = displayedLines.value.filter(l => canGenerate(l))
     if (!todo.length) {
@@ -1397,7 +1427,7 @@ function generateAll() {
     }
 
     ElMessageBox.confirm(
-        '此操作将会重新生成全部已绑定音色的台词，是否继续？',
+        `此操作将会重新生成 ${todo.length} 条已绑定音色的台词，是否继续？`,
         '提示',
         {
             confirmButtonText: '确认',
@@ -1405,9 +1435,9 @@ function generateAll() {
             type: 'warning',
         }
     )
-        .then(() => {
-            // 用户确认
-            todo.forEach(generateOne)
+        .then(async () => {
+            // 用户确认，使用并发限制（最多5个同时请求）
+            await runWithConcurrencyLimit(todo, generateOne, 5)
         })
         .catch(() => {
             // 用户取消
