@@ -596,42 +596,121 @@ class LineService:
         wb.save(file_path)
         return file_path
 
-    def export_audio(self, chapter_id,single=False):
-        # 拿到所有的台词
-        lines = self.repository.get_all(chapter_id)
-
-        paths = [line.audio_path for line in lines]
-        if len(paths) > 0:
+    def export_audio(self, chapter_id, single=False):
+        """导出音频与字幕
+        
+        Returns:
+            dict: 包含导出结果的详细信息
+                - success: bool, 是否成功
+                - message: str, 错误信息（如果失败）
+                - audio_path: str, 合并后的音频路径
+                - subtitle_path: str, 字幕路径
+                - missing_files: list, 缺失的音频文件列表
+        """
+        try:
+            # 拿到所有的台词
+            lines = self.repository.get_all(chapter_id)
+            
+            if not lines:
+                return {"success": False, "message": "该章节没有台词"}
+            
+            # 过滤掉空路径和不存在的文件
+            valid_lines = []
+            missing_files = []
+            for line in lines:
+                if not line.audio_path:
+                    missing_files.append(f"台词#{line.id}(序号{line.line_order}): 无音频路径")
+                elif not os.path.exists(line.audio_path):
+                    missing_files.append(f"台词#{line.id}(序号{line.line_order}): 文件不存在 - {line.audio_path}")
+                else:
+                    valid_lines.append(line)
+            
+            if not valid_lines:
+                return {
+                    "success": False, 
+                    "message": "没有有效的音频文件可导出",
+                    "missing_files": missing_files
+                }
+            
+            paths = [line.audio_path for line in valid_lines]
+            
             # 把paths[0]的path去掉后面的文件名，得到文件夹路径
             output_dir_path = os.path.join(os.path.dirname(paths[0]), "result")
             # 不存在就创建
             os.makedirs(output_dir_path, exist_ok=True)
-            # 放到result目录下，名字叫项目名称_章节名称.wav
+            
+            # 放到result目录下
             output_path = os.path.join(output_dir_path, "result.wav")
-            self.concat_wav_files(paths, output_path)
+            
+            # 合并音频文件
+            try:
+                self.concat_wav_files(paths, output_path)
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "message": f"音频合并失败: {str(e)}",
+                    "missing_files": missing_files
+                }
+            except Exception as e:
+                logging.exception("[export_audio] concat_wav_files 失败")
+                return {
+                    "success": False,
+                    "message": f"音频合并异常: {str(e)}",
+                    "missing_files": missing_files
+                }
+            
             # 生成字幕
             output_subtitle_path = os.path.join(output_dir_path, "result.srt")
-            subtitle_engine.generate_subtitle(output_path,output_subtitle_path)
-
-
+            try:
+                subtitle_engine.generate_subtitle(output_path, output_subtitle_path)
+            except Exception as e:
+                logging.exception("[export_audio] 生成整体字幕失败")
+                # 字幕生成失败不影响音频导出，继续执行
+            
+            # 生成单条字幕（如果需要）
             if single:
-                # 生成所有的单条字幕
                 subtitle_dir_path = os.path.join(os.path.dirname(paths[0]), "subtitles")
                 # 先清空这个文件夹
                 shutil.rmtree(subtitle_dir_path, ignore_errors=True)
                 os.makedirs(subtitle_dir_path, exist_ok=True)
-                for line in lines:
-                    path = line.audio_path
-                    base_name = os.path.splitext(os.path.basename(path))[0]
-                    subtitle_path = os.path.join(subtitle_dir_path, base_name + ".srt")
-                    subtitle_engine.generate_subtitle(path,subtitle_path)
-                    #     将subtitle_path写进line.subtitle_path
-                    self.repository.update(line.id,{"subtitle_path":subtitle_path})
-            # 导出所有数据
-            self.export_lines_to_excel(lines, os.path.join(output_dir_path, "all_lines.xlsx"))
-            return True
-        else:
-            return False
+                
+                for line in valid_lines:
+                    try:
+                        path = line.audio_path
+                        base_name = os.path.splitext(os.path.basename(path))[0]
+                        subtitle_path = os.path.join(subtitle_dir_path, base_name + ".srt")
+                        subtitle_engine.generate_subtitle(path, subtitle_path)
+                        # 将subtitle_path写进line.subtitle_path
+                        self.repository.update(line.id, {"subtitle_path": subtitle_path})
+                    except Exception as e:
+                        logging.warning(f"[export_audio] 生成单条字幕失败 line#{line.id}: {e}")
+                        # 单条字幕失败不影响整体导出
+            
+            # 导出所有数据到Excel
+            try:
+                self.export_lines_to_excel(lines, os.path.join(output_dir_path, "all_lines.xlsx"))
+            except Exception as e:
+                logging.warning(f"[export_audio] 导出Excel失败: {e}")
+                # Excel导出失败不影响整体导出
+            
+            result = {
+                "success": True,
+                "audio_path": output_path,
+                "subtitle_path": output_subtitle_path,
+                "exported_count": len(valid_lines),
+                "total_count": len(lines)
+            }
+            
+            if missing_files:
+                result["missing_files"] = missing_files
+                result["message"] = f"导出成功，但有{len(missing_files)}条台词缺少音频"
+            
+            return result
+            
+        except Exception as e:
+            logging.exception("[export_audio] 未预期的错误")
+            return {"success": False, "message": f"导出失败: {str(e)}"}
+
 
 
 

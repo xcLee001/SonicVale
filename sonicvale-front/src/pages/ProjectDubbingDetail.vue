@@ -839,7 +839,7 @@ function connectWS() {
                 if (msg.status === 'failed') {
                     ElMessage.error({
                         message: `台词 #${msg.line_id} 生成失败: ${msg.meta || '未知错误'}`,
-                        duration: 5000,
+                        duration: 15000,
                         showClose: true
                     })
                 }
@@ -2184,15 +2184,40 @@ async function markAllAsCompleted() {
             }
             const expRes = await lineAPI.exportLines(activeChapterId.value, isExportSingleSubtitle)
 
-            // 如果你有单独的字幕导出接口，可按需增加：
-            // const srtRes = (typeof lineAPI.exportSubtitles === 'function')
-            //   ? await lineAPI.exportSubtitles(activeChapterId.value)
-            //   : null
-
             const data = expRes?.data || {}
-            // 尝试从返回体里拿关键信息（字段名以你后端为准）
-            const audioOut = data.audio_zip_path || data.audio_zip || data.audio_path || data.audio
-            const srtOut = data.subtitle_zip_path || data.srt_zip || data.subtitles_zip || data.srt
+            const resCode = expRes?.code
+            
+            // 检查后端返回的结果
+            if (resCode !== 200 || data.success === false) {
+                // 后端返回了失败信息
+                const errorMsg = data.message || expRes?.message || '未知错误'
+                const missingFiles = data.missing_files || []
+                
+                console.error('导出失败详情：', { errorMsg, missingFiles, data })
+                
+                loading.setText(`导出失败（阶段 3/3）：${errorMsg}`)
+                
+                // 如果有缺失文件列表，显示更详细的信息
+                if (missingFiles.length > 0) {
+                    const missingInfo = missingFiles.slice(0, 5).join('\n') + 
+                        (missingFiles.length > 5 ? `\n...还有${missingFiles.length - 5}条` : '')
+                    ElMessage.error({
+                        message: `导出失败：${errorMsg}\n${missingInfo}`,
+                        duration: 15000,
+                        dangerouslyUseHTMLString: true
+                    })
+                } else {
+                    ElMessage.error(`重命名成功，但导出失败：${errorMsg}`)
+                }
+                loading.close()
+                return
+            }
+            
+            // 导出成功
+            const audioOut = data.audio_path
+            const srtOut = data.subtitle_path
+            const exportedCount = data.exported_count || total
+            const totalCount = data.total_count || total
 
             // 在 Loading 里展示导出结果摘要
             loading.setText(
@@ -2203,11 +2228,16 @@ async function markAllAsCompleted() {
             )
 
             // 友好提示
-            ElMessage.success(`全部完成（共 ${total} 条）。${msg1}；${msg2}；导出成功`)
+            if (data.missing_files && data.missing_files.length > 0) {
+                ElMessage.warning(`导出完成（${exportedCount}/${totalCount}条），部分台词缺少音频`)
+            } else {
+                ElMessage.success(`全部完成（共 ${exportedCount} 条）。${msg1}；${msg2}；导出成功`)
+            }
         } catch (e) {
             console.error('导出失败：', e)
-            loading.setText(`导出失败（阶段 3/3）。${msg1}；${msg2}`)
-            ElMessage.warning(`重命名成功，但导出失败。${msg1}；${msg2}`)
+            const errMsg = e?.response?.data?.message || e?.message || '未知错误'
+            loading.setText(`导出失败（阶段 3/3）：${errMsg}`)
+            ElMessage.error(`重命名成功，但导出失败：${errMsg}`)
         } finally {
             loading.close()
         }

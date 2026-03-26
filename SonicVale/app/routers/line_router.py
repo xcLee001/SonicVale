@@ -290,6 +290,13 @@ async def export_audio(chapter_id: int,
                        single: bool = Query(False, description="是否导出单条音频字幕"),
                        line_service: LineService = Depends(get_line_service)):
     res = line_service.export_audio(chapter_id, single)
+    # res 现在返回 dict，包含 success, message, audio_path 等字段
+    if isinstance(res, dict):
+        if res.get("success"):
+            return Res(data=res, code=200, message=res.get("message", "导出成功"))
+        else:
+            return Res(data=res, code=400, message=res.get("message", "导出失败"))
+    # 兼容旧的返回格式
     if not res:
         return Res(data=None, code=400, message="导出失败")
     return Res(data=res, code=200, message="导出成功")
