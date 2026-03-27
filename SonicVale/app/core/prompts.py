@@ -205,3 +205,56 @@ def get_add_smart_role_and_voice(original_text: str, role_name, voice_names):
     """
 
     return textwrap.dedent(prompt)
+
+
+def get_subtitle_correction_prompt(original_text: str, subtitle_lines: list) -> str:
+    """
+    生成字幕矫正的prompt
+    original_text: 原始正确文本
+    subtitle_lines: ASR识别的字幕行列表，格式为 [{"index": 1, "text": "..."}]
+    """
+    subtitle_json = "\n".join([f'  {{"index": {item["index"]}, "text": "{item["text"]}"}}' for item in subtitle_lines])
+    
+    prompt = f"""
+你是一个专业的字幕校对助手。你的任务是根据原文内容，修正ASR自动识别产生的字幕错误。
+
+## 任务说明
+ASR（自动语音识别）生成的字幕可能存在以下问题：
+1. 同音字错误（如"他"与"她"、"的"与"得"）
+2. 近音字错误
+3. 词语分割错误
+4. 标点符号错误或缺失
+
+你需要参考原文，将每条字幕修正为正确的文本。
+
+## 重要规则
+1. 严格保持字幕条目数量不变（输入多少条，输出多少条）
+2. 尽量保持每条字幕的长度相近，不要大幅改变字幕的切分位置
+3. 仅修正错误，不要改写原意或增删内容
+4. 如果某条字幕已经正确，原样保留
+5. 输出格式必须是JSON数组
+
+## 原文内容
+<original_text>
+{original_text}
+</original_text>
+
+## 待矫正的字幕
+<subtitle_lines>
+[
+{subtitle_json}
+]
+</subtitle_lines>
+
+## 输出格式
+严格输出JSON数组，每个元素包含index和corrected_text字段：
+<result>
+[
+  {{"index": 1, "corrected_text": "修正后的文本"}},
+  {{"index": 2, "corrected_text": "修正后的文本"}}
+]
+</result>
+
+请开始矫正：
+"""
+    return textwrap.dedent(prompt)

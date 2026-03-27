@@ -1,6 +1,7 @@
 import asyncio
 import os
 import logging
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
 
@@ -36,7 +37,8 @@ def get_line_service(db: Session = Depends(get_db)) -> LineService:
     repository = LineRepository(db)
     role_repository = RoleRepository(db)
     tts_repository = TTSProviderRepository(db)
-    return LineService(repository,role_repository,tts_repository)
+    llm_repository = LLMProviderRepository(db)
+    return LineService(repository, role_repository, tts_repository, llm_repository)
 def get_project_service(db: Session = Depends(get_db)) -> ProjectService:
     repository = ProjectRepository(db)
     return ProjectService(repository)
@@ -305,11 +307,13 @@ async def export_audio(chapter_id: int,
 # 生成单条音频的字幕（已经有音频）
 #
 
-# 矫正字幕
-@router.post("/correct-subtitle/{chapter_id}")
-async def correct_subtitle(chapter_id: int, line_service: LineService = Depends(get_line_service)):
-    # res = line_service.correct_subtitle(chapter_id)
-
+# 矫正字幕 - 拼音匹配矫正
+@router.post("/correct-subtitle-pinyin/{chapter_id}")
+async def correct_subtitle_pinyin(
+    chapter_id: int, 
+    line_service: LineService = Depends(get_line_service)
+):
+    """使用拼音匹配算法矫正字幕"""
     lines = line_service.get_all_lines(chapter_id)
     if not lines:
         logging.info("无台词记录")
@@ -318,24 +322,110 @@ async def correct_subtitle(chapter_id: int, line_service: LineService = Depends(
     if not paths or not paths[0]:
         logging.info("未找到有效音频路径")
         return Res(data=None, code=400, message="未找到有效音频路径")
+    
     # 读取所有台词，组成一个文本
     text = "\n".join([line.text_content for line in lines])
     output_dir_path = os.path.join(os.path.dirname(paths[0]), "result")
     output_subtitle_path = os.path.join(output_dir_path, "result.srt")
-    if os.path.exists(output_subtitle_path):
-        line_service.correct_subtitle(text, output_subtitle_path)
-        logging.info("整体字幕矫正完成")
-    else:
+    
+    if not os.path.exists(output_subtitle_path):
         logging.info("请先导出音频")
         return Res(data=None, code=400, message="请先导出音频")
+    
+    # 拼音矫正输出到独立文件
+    pinyin_subtitle_path = os.path.join(output_dir_path, "result_pinyin.srt")
+    shutil.copy(output_subtitle_path, pinyin_subtitle_path)
+    line_service.correct_subtitle_pinyin(text, pinyin_subtitle_path)
+    logging.info("整体字幕矫正完成（拼音匹配）：%s", pinyin_subtitle_path)
 
-    #         将单条字幕也进行矫正
+    # 将单条字幕也进行矫正
     logging.info("开始对单条字幕进行矫正")
     for line in lines:
         subtitle_path = line.subtitle_path
         line_text = line.text_content
         if subtitle_path is not None and line_text is not None and os.path.exists(subtitle_path):
-            line_service.correct_subtitle(line_text, subtitle_path)
+            # 单条字幕也输出到 _pinyin 文件
+            base, ext = os.path.splitext(subtitle_path)
+            pinyin_single_path = f"{base}_pinyin{ext}"
+            shutil.copy(subtitle_path, pinyin_single_path)
+            line_service.correct_subtitle_pinyin(line_text, pinyin_single_path)
             logging.info("单条字幕矫正完成：%s", line.id)
-    return Res(data=None, code=200, message="生成成功")
+    
+    return Res(data=None, code=200, message="拼音匹配矫正完成")
+
+
+# 矫正字幕 - LLM矫正
+@router.post("/correct-subtitle-llm/{chapter_id}")
+async def correct_subtitle_llm(
+    chapter_id: int,
+    batch_size: int = Query(20, description="LLM分批处理时每批的条数"),
+    line_service: LineService = Depends(get_line_service),
+    chapter_service: ChapterService = Depends(get_chapter_service),
+    project_service: ProjectService = Depends(get_project_service)
+):
+    """使用LLM矫正字幕，自动从项目配置获取LLM信息"""
+    # 获取章节信息
+    chapter = chapter_service.get_chapter(chapter_id)
+    if not chapter:
+        return Res(data=None, code=400, message="章节不存在")
+    
+    # 获取项目信息，从中读取LLM配置
+    project = project_service.get_project(chapter.project_id)
+    if not project:
+        return Res(data=None, code=400, message="项目不存在")
+    
+    if not project.llm_provider_id:
+        return Res(data=None, code=400, message="项目未配置LLM提供商，请在项目设置中配置")
+    
+    if not project.llm_model:
+        return Res(data=None, code=400, message="项目未配置LLM模型，请在项目设置中选择模型")
+    
+    lines = line_service.get_all_lines(chapter_id)
+    if not lines:
+        logging.info("无台词记录")
+        return Res(data=None, code=400, message="无台词记录")
+    paths = [line.audio_path for line in lines]
+    if not paths or not paths[0]:
+        logging.info("未找到有效音频路径")
+        return Res(data=None, code=400, message="未找到有效音频路径")
+    
+    # 读取所有台词，组成一个文本
+    text = "\n".join([line.text_content for line in lines])
+    output_dir_path = os.path.join(os.path.dirname(paths[0]), "result")
+    output_subtitle_path = os.path.join(output_dir_path, "result.srt")
+    
+    if not os.path.exists(output_subtitle_path):
+        logging.info("请先导出音频")
+        return Res(data=None, code=400, message="请先导出音频")
+    
+    # LLM矫正输出到独立文件
+    llm_subtitle_path = os.path.join(output_dir_path, "result_llm.srt")
+    shutil.copy(output_subtitle_path, llm_subtitle_path)
+    line_service.correct_subtitle_llm(
+        text, llm_subtitle_path, 
+        llm_provider_id=project.llm_provider_id, 
+        llm_model=project.llm_model, 
+        batch_size=batch_size
+    )
+    logging.info("整体字幕矫正完成（LLM）：%s", llm_subtitle_path)
+
+    # 将单条字幕也进行矫正
+    logging.info("开始对单条字幕进行矫正")
+    for line in lines:
+        subtitle_path = line.subtitle_path
+        line_text = line.text_content
+        if subtitle_path is not None and line_text is not None and os.path.exists(subtitle_path):
+            # 单条字幕也输出到 _llm 文件
+            base, ext = os.path.splitext(subtitle_path)
+            llm_single_path = f"{base}_llm{ext}"
+            shutil.copy(subtitle_path, llm_single_path)
+            line_service.correct_subtitle_llm(
+                line_text, llm_single_path,
+                llm_provider_id=project.llm_provider_id,
+                llm_model=project.llm_model,
+                batch_size=batch_size
+            )
+            logging.info("单条字幕矫正完成：%s", line.id)
+    
+    return Res(data=None, code=200, message="LLM矫正完成")
 

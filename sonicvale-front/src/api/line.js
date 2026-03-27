@@ -61,8 +61,14 @@ export function exportLines(chapter_id, single = false) {
 }
 
 
-// 矫正字幕
-export function correctLines(chapter_id) {
-  // POST /lines/correct/{chapter_id}
-  return request.post(`/lines/correct-subtitle/${chapter_id}`)
+// 矫正字幕 - 拼音匹配矫正
+export function correctLinesByPinyin(chapter_id) {
+  return request.post(`/lines/correct-subtitle-pinyin/${chapter_id}`)
+}
+
+// 矫正字幕 - LLM矫正（自动从项目配置获取LLM信息）
+export function correctLinesByLLM(chapter_id, batch_size = 20) {
+  return request.post(`/lines/correct-subtitle-llm/${chapter_id}`, null, {
+    params: { batch_size }
+  })
 }

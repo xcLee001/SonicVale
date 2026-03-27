@@ -1,5 +1,7 @@
 from app.core.subtitle.BcutASR import BcutASR
 from app.core.subtitle.JianYingASR import JianYingASR
+from app.core.prompts import get_subtitle_correction_prompt
+from app.core.llm_engine import LLMEngine
 
 
 def generate_subtitle(audio_file,save_path):
@@ -191,3 +193,96 @@ def correct_srt_file(original_text: str, srt_path: str,
 
 if __name__ == '__main__':
     generate_subtitle("C:\\Users\\lxc18\\SonicVale\\1\\1\\audio\\id_2.wav","C:\\Users\\lxc18\\SonicVale\\1\\1\\audio\\id_1.srt")
+
+
+# -------------------- LLM 字幕矫正 --------------------
+
+def correct_srt_file_with_llm(
+    original_text: str,
+    srt_path: str,
+    llm_engine: LLMEngine,
+    batch_size: int = 20,
+    overwrite: bool = True,
+    backup: bool = False,
+    out_path: str = None
+):
+    """
+    使用LLM进行字幕矫正，分批处理
+    
+    original_text: 原始完整文本
+    srt_path: 输入字幕文件路径
+    llm_engine: LLM引擎实例
+    batch_size: 每批处理的字幕条数（默认20条）
+    overwrite: 是否覆盖原文件
+    backup: 覆盖时是否生成.bak文件
+    out_path: 如果不覆盖，可以指定输出文件路径
+    """
+    original_full = original_text.replace("\r", "").replace("\n", "").strip()
+    entries = read_srt(srt_path)
+    
+    if not entries:
+        logging.warning("字幕文件为空：%s", srt_path)
+        return
+    
+    # 分批处理
+    corrected_entries = []
+    total_batches = (len(entries) + batch_size - 1) // batch_size
+    
+    for batch_idx in range(total_batches):
+        start_idx = batch_idx * batch_size
+        end_idx = min(start_idx + batch_size, len(entries))
+        batch_entries = entries[start_idx:end_idx]
+        
+        logging.info("处理字幕批次 %d/%d (第%d-%d条)", 
+                     batch_idx + 1, total_batches, start_idx + 1, end_idx)
+        
+        # 准备当前批次的字幕数据
+        subtitle_lines = [
+            {"index": idx, "text": txt.replace("\n", " ").replace('"', '\\"')}
+            for idx, ts, txt in batch_entries
+        ]
+        
+        # 调用LLM进行矫正
+        prompt = get_subtitle_correction_prompt(original_full, subtitle_lines)
+        
+        try:
+            response = llm_engine.generate_text(prompt)
+            corrected_batch = llm_engine.save_load_json(response)
+            
+            # 构建索引映射
+            corrected_map = {item["index"]: item["corrected_text"] for item in corrected_batch}
+            
+            # 处理当前批次的结果
+            for idx, ts, original_txt in batch_entries:
+                corrected_text = corrected_map.get(idx, original_txt)
+                # 清理文本
+                corrected_text = clean_subtitle_text(corrected_text)
+                corrected_entries.append((idx, ts, corrected_text))
+                
+        except Exception as e:
+            logging.error("批次 %d 矫正失败，使用原始文本: %s", batch_idx + 1, str(e))
+            # 失败时保留原始文本
+            for idx, ts, txt in batch_entries:
+                corrected_entries.append((idx, ts, txt))
+    
+    # 确定目标路径
+    if overwrite:
+        if backup:
+            shutil.copy(srt_path, srt_path + ".bak")
+            logging.info("已生成备份文件：%s.bak", srt_path)
+        target_path = srt_path
+    else:
+        target_path = out_path or (srt_path + ".corrected.srt")
+    
+    write_srt(target_path, corrected_entries)
+    logging.info("已生成 %s （LLM字幕矫正完成）", target_path)
+
+
+def clean_subtitle_text(text: str) -> str:
+    """清理字幕文本"""
+    # 去除空白字符
+    text = re.sub(r"\s+", "", text)
+    # 清理首尾标点
+    text = re.sub(r'^(…{1,2}|\.{3,}|[，,。.!！？?;；:：、"“”""])+', '', text)
+    text = re.sub(r'(…{1,2}|\.{3,}|[，,。.!！？?;；:：、"“”""])+$', '', text)
+    return text

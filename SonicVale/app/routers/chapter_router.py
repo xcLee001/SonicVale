@@ -55,7 +55,8 @@ def get_line_service(db: Session = Depends(get_db)) -> LineService:
     repository = LineRepository(db)
     role_repository = RoleRepository(db)
     tts_provider_repository = TTSProviderRepository(db)
-    return LineService(repository,role_repository,tts_provider_repository)
+    llm_provider_repository = LLMProviderRepository(db)
+    return LineService(repository, role_repository, tts_provider_repository, llm_provider_repository)
 
 def get_project_service(db: Session = Depends(get_db)) -> ProjectService:
     repository = ProjectRepository(db)

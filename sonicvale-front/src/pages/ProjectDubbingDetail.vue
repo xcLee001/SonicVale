@@ -295,13 +295,23 @@
                                         </el-icon> 导出
                                     </el-button>
                                 </el-tooltip>
-                                <el-tooltip content="一键矫正字幕" placement="top">
-                                    <el-button type="danger" plain @click="handleCorrectSubtitles">
+                                <el-dropdown @command="handleCorrectCommand" trigger="click">
+                                    <el-button type="danger" plain>
                                         <el-icon class="mr-1">
                                             <Edit />
-                                        </el-icon> 矫正
+                                        </el-icon> 矫正 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
                                     </el-button>
-                                </el-tooltip>
+                                    <template #dropdown>
+                                        <el-dropdown-menu>
+                                            <el-dropdown-item command="llm">
+                                                <el-icon><MagicStick /></el-icon> LLM矫正
+                                            </el-dropdown-item>
+                                            <el-dropdown-item command="pinyin">
+                                                <el-icon><Edit /></el-icon> 拼音匹配矫正
+                                            </el-dropdown-item>
+                                        </el-dropdown-menu>
+                                    </template>
+                                </el-dropdown>
                             </div>
 
                             <!-- 右侧：设置区 -->
@@ -2523,16 +2533,33 @@ function cellStyle({ row, column }) {
 
     return {}
 }
-async function handleCorrectSubtitles() {
+
+// 处理矫正下拉菜单命令
+async function handleCorrectCommand(command) {
+    if (command === 'llm') {
+        await handleCorrectSubtitles(true)
+    } else {
+        await handleCorrectSubtitles(false)
+    }
+}
+
+async function handleCorrectSubtitles(useLLM = false) {
     // 打开等待窗口
     const loading = ElLoading.service({
         lock: true,
-        text: '正在矫正字幕，请稍候...',
+        text: useLLM ? '正在使用LLM矫正字幕，请稍候...' : '正在矫正字幕，请稍候...',
         background: 'rgba(0, 0, 0, 0.5)'
     })
 
     try {
-        const res = await lineAPI.correctLines(activeChapterId.value)
+        let res
+        if (useLLM) {
+            // 使用LLM矫正（后端自动从项目配置获取LLM信息）
+            res = await lineAPI.correctLinesByLLM(activeChapterId.value)
+        } else {
+            // 使用拼音匹配矫正
+            res = await lineAPI.correctLinesByPinyin(activeChapterId.value)
+        }
         if (res?.code !== 200) {
             ElMessage.error(res?.message || '请先导出音频与字幕')
         }

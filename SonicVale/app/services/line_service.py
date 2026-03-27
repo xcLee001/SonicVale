@@ -24,6 +24,8 @@ from app.models.po import LinePO, RolePO
 from app.repositories.line_repository import LineRepository
 from app.repositories.role_repository import RoleRepository
 from app.repositories.tts_provider_repository import TTSProviderRepository
+from app.repositories.llm_provider_repository import LLMProviderRepository
+from app.core.llm_engine import LLMEngine
 
 import os
 
@@ -35,10 +37,11 @@ def _lock_key(path: str) -> str:
 _file_locks = defaultdict(threading.Lock)
 class LineService:
 
-    def __init__(self, repository: LineRepository,role_repository: RoleRepository,tts_provider_repository: TTSProviderRepository):
+    def __init__(self, repository: LineRepository,role_repository: RoleRepository,tts_provider_repository: TTSProviderRepository, llm_provider_repository: LLMProviderRepository = None):
         """注入 repository"""
 
         self.tts_provider_repository = tts_provider_repository
+        self.llm_provider_repository = llm_provider_repository
         self.role_repository = role_repository
         self.repository = repository
 
@@ -724,9 +727,47 @@ class LineService:
             return dto.subtitle_path
         else:
             return None
-#     字幕矫正
-    def correct_subtitle(self, text, output_subtitle_path):
+#     字幕矫正 - 拼音匹配
+    def correct_subtitle_pinyin(self, text, output_subtitle_path):
+        """
+        使用拼音匹配算法矫正字幕
+        
+        text: 原始正确文本
+        output_subtitle_path: 字幕文件路径
+        """
         subtitle_engine.correct_srt_file(text, output_subtitle_path)
+
+#     字幕矫正 - LLM
+    def correct_subtitle_llm(self, text, output_subtitle_path, llm_provider_id: int, llm_model: str, batch_size: int = 20):
+        """
+        使用LLM矫正字幕
+        
+        text: 原始正确文本
+        output_subtitle_path: 字幕文件路径
+        llm_provider_id: LLM提供商ID
+        llm_model: LLM模型名称
+        batch_size: 分批处理时每批的条数
+        """
+        if not self.llm_provider_repository:
+            raise Exception("LLM Provider Repository 未配置")
+        
+        llm_provider = self.llm_provider_repository.get_by_id(llm_provider_id)
+        if llm_provider is None:
+            raise Exception(f"LLM服务提供商不存在（ID: {llm_provider_id}）")
+        
+        llm_engine = LLMEngine(
+            api_key=llm_provider.api_key,
+            base_url=llm_provider.api_base_url,
+            model_name=llm_model,
+            custom_params=llm_provider.custom_params or "{}"
+        )
+        
+        subtitle_engine.correct_srt_file_with_llm(
+            text, 
+            output_subtitle_path,
+            llm_engine=llm_engine,
+            batch_size=batch_size
+        )
 
 #     生成字幕
 #     def generate_subtitle(self, res_path):

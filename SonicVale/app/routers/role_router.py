@@ -11,6 +11,7 @@ from app.repositories.line_repository import LineRepository
 from app.repositories.project_repository import ProjectRepository
 from app.repositories.role_repository import RoleRepository
 from app.repositories.tts_provider_repository import TTSProviderRepository
+from app.repositories.llm_provider_repository import LLMProviderRepository
 from app.services.line_service import LineService
 from app.services.project_service import ProjectService
 from app.services.role_service import RoleService
@@ -31,7 +32,8 @@ def get_line_service(db: Session = Depends(get_db)) -> LineService:
     repository = LineRepository(db)
     role_repository = RoleRepository(db)
     tts_provider_repository = TTSProviderRepository(db)
-    return LineService(repository,role_repository,tts_provider_repository)
+    llm_provider_repository = LLMProviderRepository(db)
+    return LineService(repository, role_repository, tts_provider_repository, llm_provider_repository)
 @router.post("", response_model=Res[RoleResponseDTO],
              summary="创建角色",
              description="根据项目ID创建角色，角色名称在同一项目下不可重复" )
