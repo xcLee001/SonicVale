@@ -200,7 +200,12 @@ async def startup_event():
 
         try:
             emotion_service = get_emotion_service(db)
-            for name in ["高兴","生气","伤心","害怕","厌恶","低落","惊喜","平静"]:
+            for name in [
+                # 8种基础情绪
+                "高兴", "生气", "伤心", "害怕", "厌恶", "低落", "惊喜", "平静",
+                # 2种独特复合情绪
+                "嘲讽", "悲愤",
+            ]:
                 try:
                     emotion_service.create_emotion(EmotionEntity(name=name))
                 except Exception as e:

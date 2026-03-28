@@ -13,23 +13,40 @@ TTS_TIMEOUT_SECONDS = 1200  # 可调
 def emotion_text_to_vector(emotion: str, intensity: str) -> list[float]:
     """
     将情绪(文本) + 强度(文本) 转换成 8维向量
-    :param emotion: "喜" / "怒" / "哀" / "惧" / "厌恶" / "低落" / "惊喜" / "平静"
+    8维分别对应: [高兴, 生气, 伤心, 害怕, 厌恶, 低落, 惊喜, 平静]
+    基础情绪为 one-hot，复合情绪为多维加权混合
+    :param emotion: 情绪名称
     :param intensity: "微弱" / "稍弱" / "中等" / "较强" / "强烈"
     :return: 长度为8的向量
     """
-    emotions = ["高兴", "生气", "伤心", "害怕", "厌恶", "低落", "惊喜", "平静"]
-    intensity_map = {
+    # 8维基础情绪索引: 高兴=0, 生气=1, 伤心=2, 害怕=3, 厌恶=4, 低落=5, 惊喜=6, 平静=7
+    BASE_EMOTIONS = ["高兴", "生气", "伤心", "害怕", "厌恶", "低落", "惊喜", "平静"]
+
+    # 复合情绪 → 基础情绪权重（各维度满强度，由 intensity 统一缩放）
+    COMPOSITE_MAP = {
+        "嘲讽":   {"高兴": 0.5, "厌恶": 1.0},  # 讽刺语气
+        "悲愤":   {"伤心": 1.0, "生气": 1.0},  # 悲愤交加
+    }
+
+    INTENSITY_MAP = {
         "微弱": 0.2,
-        "稍弱": 0.35,
-        "中等": 0.5,
-        "较强": 0.75,
+        "稍弱": 0.4,
+        "中等": 0.6,
+        "较强": 0.8,
         "强烈": 1.0
     }
 
+    scale = INTENSITY_MAP.get(intensity, 0.5)
     vec = [0.0] * 8
-    if emotion in emotions and intensity in intensity_map:
-        idx = emotions.index(emotion)
-        vec[idx] = intensity_map[intensity]
+
+    if emotion in BASE_EMOTIONS:
+        # 基础情绪: one-hot
+        vec[BASE_EMOTIONS.index(emotion)] = scale
+    elif emotion in COMPOSITE_MAP:
+        # 复合情绪: 多维加权混合
+        for base_name, weight in COMPOSITE_MAP[emotion].items():
+            vec[BASE_EMOTIONS.index(base_name)] = round(scale * weight, 4)
+    # 未知情绪返回全零向量（静默降级）
     return vec
 async def tts_worker(app: FastAPI):
     q = app.state.tts_queue
