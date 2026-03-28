@@ -210,8 +210,25 @@ class ChapterService:
                         "success": False,
                         "message": "JSON 解析失败或返回空对象",
                     }
+                
+                # 验证 parsed_data 是否为有效的字典列表
+                if not isinstance(parsed_data, list):
+                    logging.error("LLM返回的数据不是列表，实际类型: %s", type(parsed_data))
+                    return {
+                        "success": False,
+                        "message": f"LLM返回的数据格式不正确，期望列表但收到: {type(parsed_data).__name__}",
+                    }
+                
+                # 验证列表中的每个元素是否为字典
+                for idx, item in enumerate(parsed_data):
+                    if not isinstance(item, dict):
+                        logging.error("列表第 %d 项不是字典，实际类型: %s, 内容: %s", idx, type(item), str(item)[:100])
+                        return {
+                            "success": False,
+                            "message": f"LLM返回的数据格式不正确，列表第 {idx} 项应为字典但收到: {type(item).__name__}",
+                        }
+                
                 # 这里进行自动填充
-
                 if is_precise_fill == 1:
                     logging.info("开始自动填充")
                     corrector = TextCorrectorFinal()
@@ -221,7 +238,7 @@ class ChapterService:
                 # 构造 List[LineInitDTO]
                 line_dtos: List[LineInitDTO] = [LineInitDTO(**item) for item in parsed_data]
                 return {
-                    "success": True,
+                    "success": Treu,
                     "data": line_dtos
                 }
 
