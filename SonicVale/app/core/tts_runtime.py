@@ -69,7 +69,7 @@ async def tts_worker(app: FastAPI):
                 "event": "line_update",
                 "line_id": dto.id,
                 "status": "processing",
-                "progress": q.qsize(),
+                "progress": q.qsize() + 1,  # +1 包含当前正在处理的任务
                 "meta": f"角色 {dto.role_id} 开始生成"
             })
 

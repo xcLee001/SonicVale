@@ -841,18 +841,25 @@ function connectWS() {
                 const type = msg.status === 'failed' ? 'danger'
                     : msg.status === 'processing' ? 'warning'
                         : msg.status === 'done' ? 'success'
-                            : 'info'
+                            : msg.status === 'queued' ? 'info'
+                                : 'info'
                 const meta = msg.meta || (msg.status === 'done'
                     ? '生成完成'
                     : msg.status === 'processing'
                         ? '生成中'
                         : msg.status === 'failed'
                             ? '生成失败'
-                            : '状态更新')
+                            : msg.status === 'queued'
+                                ? '已入队'
+                                : '状态更新')
                 // 同时弹出提示框
                 // console.log(`[${new Date().toLocaleTimeString()}] #${msg.line_id} ${meta}`)
                 addQueue({ title: `台词 #${msg.line_id}`, meta, type })
-                applyLineUpdate(msg)
+                
+                // queued 状态不更新行数据，只更新队列大小
+                if (msg.status !== 'queued') {
+                    applyLineUpdate(msg)
+                }
                 
                 // 生成失败时弹出明显的错误提示
                 if (msg.status === 'failed') {
@@ -863,7 +870,7 @@ function connectWS() {
                     })
                 }
                 queue_rest_size.value = msg.progress
-                if (msg.progress === 0 && msg.status !== 'processing') {
+                if (msg.progress === 0 && msg.status !== 'processing' && msg.status !== 'queued') {
                     if (completionSoundEnabled.value === true) {
                         const audio = new Audio(new URL('../assets/完成提示音.mp3', import.meta.url).href)
                         audio.volume = 0.2

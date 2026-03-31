@@ -178,22 +178,25 @@ def update_line_audio_path(
 
 
 @router.post("/generate-audio/{project_id}/{chapter_id}")
-def generate_audio(request: Request, project_id: int, dto: LineCreateDTO,line_service: LineService = Depends(get_line_service)):
+async def generate_audio(request: Request, project_id: int, dto: LineCreateDTO,line_service: LineService = Depends(get_line_service)):
     q = request.app.state.tts_queue  # 👈 永远拿到已初始化的同一份队列
     if q.full():
         # 可选：带上 Retry-After 头
         raise HTTPException(status_code=429, detail="队列已满，请稍后重试")
     q.put_nowait((project_id, dto))
-    #
+    queue_size = q.qsize()  # 入队后的队列大小
     line_service.update_line(dto.id, {"status": "processing"})
-    # manager.broadcast({
-    #     "event": "line_update",
-    #     "line_id": dto.id,
-    #     "status": "processing",
-    #     "progress":  q.qsize(),
-    #     "meta": f"角色 {dto.role_id} 开始生成"
-    # })
-    logging.info("队列剩余数量: %s", q.qsize())
+    
+    # 入队后立即广播队列大小，让前端实时看到更新
+    await manager.broadcast({
+        "event": "line_update",
+        "line_id": dto.id,
+        "status": "queued",
+        "progress": queue_size,
+        "meta": f"已入队，等待生成"
+    })
+    
+    logging.info("队列剩余数量: %s", queue_size)
     return {"code": 200, "message": "已入队", "data": {"line_id": dto.id}}
 
 
