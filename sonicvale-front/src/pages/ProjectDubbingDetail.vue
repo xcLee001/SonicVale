@@ -52,7 +52,7 @@
 
         <el-container class="main">
             <!-- 左侧章节 -->
-            <el-aside width="240px" class="aside">
+            <el-aside :width="asideCollapsed ? '0px' : '240px'" class="aside" :class="{ 'aside-collapsed': asideCollapsed }">
                 <div class="aside-head">
                     <div class="aside-title">
                         <div class="title-left">
@@ -62,11 +62,22 @@
                             <span>所有章节</span>
                         </div>
 
-                        <el-button circle size="small" type="primary" plain @click="scrollToActiveChapter">
-                            <el-icon>
-                                <Refresh />
-                            </el-icon>
-                        </el-button>
+                        <div class="title-right">
+                            <el-tooltip content="定位到当前章节" placement="top">
+                                <el-button circle size="small" type="primary" plain @click="scrollToActiveChapter">
+                                    <el-icon>
+                                        <Refresh />
+                                    </el-icon>
+                                </el-button>
+                            </el-tooltip>
+                            <el-tooltip content="折叠侧边栏" placement="top">
+                                <el-button circle size="small" plain @click="asideCollapsed = true">
+                                    <el-icon>
+                                        <DArrowLeft />
+                                    </el-icon>
+                                </el-button>
+                            </el-tooltip>
+                        </div>
                     </div>
 
 
@@ -138,6 +149,13 @@
 
 
             </el-aside>
+
+            <!-- 侧边栏折叠时的展开按钮 -->
+            <div v-if="asideCollapsed" class="aside-expand-btn" @click="asideCollapsed = false" title="展开侧边栏">
+                <el-icon :size="16">
+                    <DArrowRight />
+                </el-icon>
+            </div>
 
             <!-- 主区域 -->
 
@@ -695,7 +713,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
     Lock, Unlock, ArrowLeft, Setting, Headset, Menu, Plus, Search, Edit, Delete, Refresh, MagicStick, Document, CaretBottom, CaretRight, Upload, VideoPlay, VideoPause, Mute, Check,
-    CircleCheck, CircleClose, QuestionFilled, Odometer, Microphone, ArrowDown, Operation
+    CircleCheck, CircleClose, QuestionFilled, Odometer, Microphone, ArrowDown, Operation, DArrowLeft, DArrowRight
 } from '@element-plus/icons-vue'
 import service from '../api/config'
 import * as chapterAPI from '../api/chapter'
@@ -722,6 +740,9 @@ const emotionLocked = ref(false)
 const strengthLocked = ref(false)
 
 const roleColumnLocked = ref(false)
+
+// 侧边栏折叠状态
+const asideCollapsed = ref(false)
 // //////////////////////////////////websocket
 // ---- WebSocket（局部，纯 JS）+ 任务队列 ----
 import { onUnmounted } from 'vue'
@@ -3572,6 +3593,40 @@ function restoreLastChapter() {
     background: var(--el-bg-color);
     /* border: 1px red solid; */
     overflow: auto;
+    position: relative;
+    transition: width 0.3s ease;
+}
+
+.aside-collapsed {
+    padding: 0;
+    overflow: hidden;
+}
+
+/* 标题栏右侧按钮组 */
+.title-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 展开按钮 - 侧边栏折叠后显示 */
+.aside-expand-btn {
+    position: relative;
+    width: 20px;
+    height: 92vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: var(--el-fill-color-lighter);
+    color: var(--el-text-color-secondary);
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.aside-expand-btn:hover {
+    background: var(--el-color-primary-light-9);
+    color: var(--el-color-primary);
 }
 
 .aside-head {
