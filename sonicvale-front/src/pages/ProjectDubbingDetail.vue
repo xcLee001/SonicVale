@@ -781,11 +781,20 @@ function applyLineUpdate(msg) {
     }
 }
 
-const HEARTBEAT_INTERVAL = 150000;   // 60s 发送一次 ping，正常来说一般15s
+const HEARTBEAT_INTERVAL = 30000;   // 30s 发送一次 ping
 const HEARTBEAT_DEADLINE = 7000;   // 7s 内未收到 pong 视为假死
 let heartbeatTimer = null;     // 定时发送 ping
 let heartbeatTimeout = null;   // 等待 pong 的超时
+
+// 清理心跳定时器
+function stopHeartbeat() {
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    if (heartbeatTimeout) { clearTimeout(heartbeatTimeout); heartbeatTimeout = null; }
+}
+
 function startHeartbeat() {
+    // 先清理旧的定时器，防止重连时产生多个定时器
+    stopHeartbeat();
     // 周期性发送 ping
     heartbeatTimer = setInterval(() => {
         // 如果 readyState 不是 OPEN，等 onclose 去处理重连
@@ -1584,7 +1593,11 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+    // 清理重连定时器
     if (reconnectTimer) clearTimeout(reconnectTimer)
+    // 清理心跳定时器
+    stopHeartbeat()
+    // 关闭 WebSocket 连接
     try { ws && ws.close() } catch { }
     ws = null
 })

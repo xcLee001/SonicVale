@@ -320,17 +320,18 @@ def test_db():
 
 
 import json
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
     await manager.connect(ws)
+    logging.info("WebSocket 客户端已连接")
     try:
         while True:
             msg_text = await ws.receive_text()
             try:
                 data = json.loads(msg_text)
-            except:
+            except json.JSONDecodeError:
                 data = {}
 
             # 👇 心跳处理：收到 ping 立即回复 pong
@@ -341,7 +342,11 @@ async def ws_endpoint(ws: WebSocket):
 
             # 这里可以扩展处理订阅/其他消息
 
-    except:
+    except WebSocketDisconnect:
+        logging.info("WebSocket 客户端主动断开")
+        manager.disconnect(ws)
+    except Exception as e:
+        logging.warning(f"WebSocket 连接异常: {e}")
         manager.disconnect(ws)
 
 
