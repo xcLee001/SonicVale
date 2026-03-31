@@ -170,37 +170,57 @@ body,
 }
 
 .layout-sider {
-  background: #1f2d3d;
+  background: linear-gradient(180deg, #1a2634 0%, #1f2d3d 100%);
   color: #fff;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow: hidden !important;
   transition: width .2s ease;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 折叠态强制隐藏所有滚动条 */
+.layout-sider.is-collapsed {
+  overflow: hidden !important;
+}
+
+.layout-sider.is-collapsed * {
+  overflow: hidden !important;
 }
 
 /* 顶部 Logo */
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
   height: 60px;
   padding: 0 12px;
-  background: #15202b;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(135deg, #15202b 0%, #1a2836 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.is-collapsed .logo {
+  padding: 0;
 }
 
 .logo-emoji {
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .logo-text {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
+  background: linear-gradient(90deg, #fff, #a8d8ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* 菜单区域：只纵向滚动，禁止横向滚动（修复折叠态横向滚动条） */
@@ -209,6 +229,12 @@ body,
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  border: none !important;
+}
+
+/* 修复折叠时菜单容器溢出 */
+.is-collapsed .sider-menu {
+  overflow: hidden;
 }
 
 /* 底部控制区 */
@@ -218,11 +244,15 @@ body,
   flex-direction: column;
   gap: 4px;
   padding: 12px 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .is-collapsed .sider-footer {
   align-items: center;
+  padding: 12px 0;
+  width: 64px;
+  box-sizing: border-box;
 }
 
 .footer-item {
@@ -230,20 +260,22 @@ body,
   align-items: center;
   gap: 12px;
   height: 44px;
-  padding: 0 4px;
-  border-radius: 8px;
+  padding: 0 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
 }
 
 .footer-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .is-collapsed .footer-item {
   justify-content: center;
   padding: 0;
-  width: 44px;
+  width: 56px;
+  height: 44px;
+  margin: 0 auto;
 }
 
 .action-label {
@@ -251,32 +283,43 @@ body,
   color: #bfcbd9;
   white-space: nowrap;
   user-select: none;
+  transition: color 0.2s ease;
+}
+
+.footer-item:hover .action-label {
+  color: #fff;
 }
 
 /* 折叠按钮 */
 .collapse-btn {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   border: none;
   width: 36px;
   height: 36px;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
+  transition: all 0.25s ease;
+  flex-shrink: 0;
 }
 
 .collapse-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(64, 158, 255, 0.3);
+  transform: scale(1.05);
 }
 
 /* 主题切换按钮 */
 .theme-btn {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   border: none;
   width: 36px;
   height: 36px;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
+  transition: all 0.25s ease;
+  flex-shrink: 0;
 }
 
 .theme-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 184, 77, 0.3);
+  transform: scale(1.05);
 }
 
 /* 右侧容器 */
@@ -296,40 +339,78 @@ body,
 
 /* —— 菜单样式（展开态） —— */
 .el-menu-item {
-  border-radius: 8px;
+  border-radius: 10px;
   margin: 4px 12px;
+  height: 44px;
+  line-height: 44px;
+  transition: all 0.25s ease;
+}
+
+.el-menu-item .el-icon {
+  font-size: 18px;
+  transition: transform 0.2s ease;
+}
+
+.el-menu-item:hover .el-icon {
+  transform: scale(1.1);
 }
 
 .el-menu-item:hover {
-  background-color: #304156 !important;
+  background-color: rgba(64, 158, 255, 0.15) !important;
 }
 
 .el-menu-item.is-active {
-  background-color: #409EFF !important;
+  background: linear-gradient(135deg, #409EFF 0%, #5cadff 100%) !important;
   color: #fff !important;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.35);
 }
 
 /* —— 折叠态定制（关键修复） —— */
 .el-menu--collapse .el-menu-item {
-  margin: 6px;
-  /* 避免原 12px 横向外边距导致 64px 溢出 */
-  padding: 0;
-  width: auto;
+  margin: 6px 8px;
+  padding: 0 !important;
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  height: 48px;
   box-sizing: border-box;
   justify-content: center;
+  display: flex;
+  align-items: center;
 }
 
 .el-menu--collapse .el-menu-item .el-icon {
   margin-right: 0;
+  font-size: 20px;
 }
 
 .el-menu--collapse .el-menu-item.is-active {
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 /* 如果后续加子菜单，折叠时隐藏箭头避免溢出 */
 .el-menu--collapse .el-sub-menu__icon-arrow {
   display: none;
+}
+
+/* 折叠态菜单容器修复溢出 */
+.el-menu--collapse {
+  width: 64px !important;
+  min-width: 64px !important;
+  max-width: 64px !important;
+  overflow: hidden !important;
+}
+
+/* el-aside 内部滚动条强制隐藏 */
+.is-collapsed .el-menu {
+  overflow: hidden !important;
+}
+
+/* 隐藏 webkit 滚动条 */
+.is-collapsed ::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 /* 过渡动画 */
@@ -349,25 +430,27 @@ body,
 .sider-info {
   flex: 0 0 auto;
   padding: 12px 14px 14px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
   line-height: 1.6;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.15);
   color: #c9d4e0;
 }
 
 /* 普通信息行（版本、联系方式） */
 .info-item {
-  color: #aeb8c5;
-  margin-bottom: 4px;
+  color: #9aa8b8;
+  margin-bottom: 6px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
+  word-break: break-all;
 }
 
 .info-item:first-child {
   font-weight: 600;
-  color: #d6dee8;
+  color: #67c23a;
+  font-size: 13px;
 }
 
 /* 让QQ号可选中复制 */
@@ -376,23 +459,22 @@ body,
   color: #fff;
 }
 
-
-
 .info-warning {
-  margin-top: 8px;
-  padding: 8px 10px;
-  font-size: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  font-size: 11px;
   color: #ffb84d;
-  background: rgba(255, 184, 77, 0.1);
-  border: 1px solid rgba(255, 184, 77, 0.25);
-  border-radius: 6px;
-  line-height: 1.5;
+  background: linear-gradient(135deg, rgba(255, 184, 77, 0.12) 0%, rgba(255, 152, 0, 0.08) 100%);
+  border: 1px solid rgba(255, 184, 77, 0.3);
+  border-radius: 8px;
+  line-height: 1.6;
   text-align: justify;
   transition: all 0.3s ease;
 }
 
 .info-warning:hover {
-  background: rgba(255, 184, 77, 0.2);
+  background: linear-gradient(135deg, rgba(255, 184, 77, 0.2) 0%, rgba(255, 152, 0, 0.15) 100%);
   color: #ffd27f;
+  border-color: rgba(255, 184, 77, 0.5);
 }
 </style>
