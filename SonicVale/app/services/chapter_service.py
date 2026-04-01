@@ -238,7 +238,7 @@ class ChapterService:
                 # 构造 List[LineInitDTO]
                 line_dtos: List[LineInitDTO] = [LineInitDTO(**item) for item in parsed_data]
                 return {
-                    "success": Treu,
+                    "success": True,
                     "data": line_dtos
                 }
 
