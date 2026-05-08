@@ -1,6 +1,7 @@
 import json
 import logging
 
+import requests
 from aiohttp.abc import HTTPException
 from sqlalchemy import Sequence
 
@@ -76,6 +77,51 @@ class LLMProviderService:
         """
         res = self.repository.delete(llm_provider_id)
         return res
+
+    def fetch_model_list(self, api_base_url: str, api_key: str | None):
+        """Fetch models from an OpenAI-compatible /models endpoint."""
+        if not api_base_url or not api_base_url.strip():
+            return False, [], "Base URL 不能为空"
+
+        base_url = api_base_url.strip().rstrip("/")
+        if base_url.endswith("/chat/completions"):
+            base_url = base_url[: -len("/chat/completions")]
+        models_url = base_url if base_url.endswith("/models") else f"{base_url}/models"
+
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        try:
+            resp = requests.get(models_url, headers=headers, timeout=15)
+            resp.raise_for_status()
+            payload = resp.json()
+        except requests.RequestException as e:
+            return False, [], f"获取模型列表失败：{e}"
+        except ValueError:
+            return False, [], "获取模型列表失败：返回内容不是合法 JSON"
+
+        items = payload.get("data") if isinstance(payload, dict) else payload
+        if not isinstance(items, list):
+            return False, [], "获取模型列表失败：返回格式中没有 data 列表"
+
+        models = []
+        seen = set()
+        for item in items:
+            if isinstance(item, str):
+                model_id = item
+            elif isinstance(item, dict):
+                model_id = item.get("id") or item.get("name")
+            else:
+                model_id = None
+
+            if model_id and model_id not in seen:
+                models.append(model_id)
+                seen.add(model_id)
+
+        if not models:
+            return False, [], "未获取到可用模型"
+        return True, models, "获取成功"
 
     def test_llm_provider(self, entity: LLMProviderEntity):
         """测试LLM供应商"""

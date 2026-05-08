@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.response import Res
 from app.db.database import get_db
-from app.dto.llm_provider_dto import LLMProviderCreateDTO, LLMProviderResponseDTO
+from app.dto.llm_provider_dto import LLMProviderCreateDTO, LLMProviderResponseDTO, LLMModelsFetchDTO
 from app.entity.llm_provider_entity import LLMProviderEntity
 from app.services.llm_provider_service import LLMProviderService
 from app.repositories.llm_provider_repository import LLMProviderRepository
@@ -71,6 +71,14 @@ def get_all_llm_providers(service: LLMProviderService = Depends(get_llm_service)
 
 
 # ------------------- 修改LLM供应商 -------------------
+@router.post("/models", response_model=Res[List[str]])
+def fetch_llm_models(dto: LLMModelsFetchDTO, service: LLMProviderService = Depends(get_llm_service)):
+    success, models, msg = service.fetch_model_list(dto.api_base_url, dto.api_key)
+    if success:
+        return Res(data=models, code=200, message=msg)
+    return Res(data=[], code=400, message=msg)
+
+
 @router.put("/{llm_provider_id}", response_model=Res[LLMProviderCreateDTO],
             summary="修改LLM供应商",
             description="根据LLM供应商ID修改LLM供应商信息")

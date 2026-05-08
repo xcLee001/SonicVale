@@ -34,6 +34,14 @@ export function testLLMProvider(data) {
   return request.post('/llm_providers/test', data)
 }
 
+// 根据 Base URL 和 API Key 拉取模型列表
+export function fetchLLMProviderModels(data) {
+  return request.post('/llm_providers/models', {
+    api_base_url: data.api_base_url,
+    api_key: data.api_key
+  })
+}
+
 /**
  * TTS Provider
  * 说明：只有一个（id=1），不可新增/删除，只能查找和更新

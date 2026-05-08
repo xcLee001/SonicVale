@@ -135,17 +135,33 @@
           <el-input v-model="llmForm.api_key" placeholder="可留空" show-password />
         </el-form-item>
         <el-form-item label="模型列表">
-          <el-select
-            v-model="currentModelList"
-            multiple
-            filterable
-            allow-create
-            default-first-option
-            :reserve-keyword="false"
-            placeholder="输入模型后回车"
-            style="width: 100%"
-          >
-          </el-select>
+          <div class="model-list-row">
+            <el-select
+              v-model="currentModelList"
+              multiple
+              filterable
+              allow-create
+              default-first-option
+              :reserve-keyword="false"
+              :loading="fetchingModels"
+              placeholder="输入模型后回车，或自动拉取"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="model in modelOptions"
+                :key="model"
+                :label="model"
+                :value="model"
+              />
+            </el-select>
+            <el-tooltip content="根据 Base URL 和 API Key 拉取模型列表" placement="top">
+              <el-button
+                :icon="Refresh"
+                :loading="fetchingModels"
+                @click="loadLLMModels"
+              />
+            </el-tooltip>
+          </div>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="llmForm.status" :active-value="1" :inactive-value="0" />
@@ -196,12 +212,12 @@
 
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CopyDocument } from '@element-plus/icons-vue'
+import { CopyDocument, Refresh } from '@element-plus/icons-vue'
 import {
   fetchLLMProviders, createLLMProvider, updateLLMProvider, deleteLLMProvider,
-  fetchTTSProviders, updateTTSProvider, testLLMProvider, testTTSProvider
+  fetchTTSProviders, updateTTSProvider, testLLMProvider, testTTSProvider, fetchLLMProviderModels
 } from '../api/provider'
 
 const activeTab = ref('llm')
@@ -260,6 +276,11 @@ const llmRules = {
 }
 
 const currentModelList = ref([])
+const fetchedModelOptions = ref([])
+const fetchingModels = ref(false)
+const modelOptions = computed(() => {
+  return [...new Set([...fetchedModelOptions.value, ...currentModelList.value].filter(Boolean))]
+})
 
 // 监听弹窗打开，初始化 currentModelList
 watch(() => llmDialogVisible.value, (val) => {
@@ -269,11 +290,14 @@ watch(() => llmDialogVisible.value, (val) => {
         .split(/[,，]/)
         .map(s => s.trim())
         .filter(s => s)
+      fetchedModelOptions.value = [...currentModelList.value]
     } else {
       currentModelList.value = []
+      fetchedModelOptions.value = []
     }
   } else {
     currentModelList.value = []
+    fetchedModelOptions.value = []
   }
 })
 
@@ -341,6 +365,30 @@ async function removeLLM(id) {
     await loadLLM()
   } catch {
     ElMessage.error('删除失败')
+  }
+}
+
+
+async function loadLLMModels() {
+  if (!llmForm.value.api_base_url) {
+    ElMessage.warning('请先填写 Base URL')
+    return
+  }
+
+  fetchingModels.value = true
+  try {
+    const res = await fetchLLMProviderModels(llmForm.value)
+    if (res.code === 200) {
+      const models = Array.isArray(res.data) ? res.data : []
+      fetchedModelOptions.value = models
+      ElMessage.success(`已拉取 ${models.length} 个模型，请手动选择需要的模型`)
+    } else {
+      ElMessage.error(res.message || '拉取模型列表失败')
+    }
+  } catch (e) {
+    ElMessage.error('拉取模型列表异常')
+  } finally {
+    fetchingModels.value = false
   }
 }
 
@@ -448,6 +496,13 @@ onMounted(async () => {
 <style scoped>
 .toolbar {
   margin-bottom: 12px;
+}
+
+.model-list-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
 }
 
 .masked {

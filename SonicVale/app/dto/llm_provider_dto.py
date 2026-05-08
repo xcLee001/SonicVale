@@ -21,6 +21,11 @@ class LLMProviderCreateDTO(BaseModel):
     custom_params: Optional[str] = None
 
 
+class LLMModelsFetchDTO(BaseModel):
+    api_base_url: str
+    api_key: Optional[str] = None
+
+
 class LLMProviderResponseDTO(BaseModel):
     """业务实体：LLM"""
     name: str
