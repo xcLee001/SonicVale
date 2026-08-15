@@ -50,15 +50,15 @@
 -->
 
       <div class="sider-info" v-if="!collapsed">
-        <div class="info-item">版本：v1.1.5</div>
-        <div class="info-item">配音交流群：1084186865（如果群已经满，请按照申请提示进入其他群）</div>
+        <div class="info-item">版本：v1.1.6</div>
+        <div class="info-item">配音交流群：1042370127（如果群已经满，请按照申请提示进入其他群）</div>
         <!-- 🔔 醒目声明 -->
         <div class="info-warning">
-          
-            本软件完全免费，遵循 AGPLv3 开源协议。
-       
-            禁止倒卖，违者必究。 
-          
+
+          本软件完全免费，遵循 AGPLv3 开源协议。
+
+          禁止倒卖，违者必究。
+
         </div>
       </div>
 

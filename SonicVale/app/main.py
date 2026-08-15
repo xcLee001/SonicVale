@@ -53,7 +53,7 @@ logging.info(f"日志文件路径: {log_file_path}")
 app = FastAPI(
     title="音墟 (YinXu) - AI多角色小说配音",
     description="桌面端小说多角色配音系统，支持 TTS、GPT 提取角色、台词管理及字幕生成",
-    version="1.0.0",
+    version="1.1.6",
 )
 # 跨域
 # 允许的前端地址
