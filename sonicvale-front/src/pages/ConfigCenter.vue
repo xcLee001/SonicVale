@@ -86,30 +86,27 @@
         </el-table>
       </el-tab-pane>
 
-      <!-- TTS 管理（列表，仅编辑） -->
+      <!-- TTS 管理 -->
       <el-tab-pane label="TTS 管理" name="tts">
         <div class="toolbar">
-          <el-button type="primary" disabled>仅支持编辑，不可新增/删除</el-button>
+          <el-alert
+            title="IndexTTS 引擎由系统内置，只需配置对应的服务 URL。"
+            type="info"
+            show-icon
+            :closable="false"
+          />
         </div>
 
         <el-table :data="ttsList" stripe border highlight-current-row class="styled-table">
           <el-table-column prop="name" label="名称" min-width="160" />
-          <el-table-column prop="api_base_url" label="Base URL" min-width="240" />
-
-          <el-table-column label="API Key" min-width="180">
+          <el-table-column label="引擎类型" min-width="160">
             <template #default="{ row }">
-              <span class="api-key">{{ maskKey(row.api_key) }}</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="状态" width="120">
-            <template #default="{ row }">
-              <el-tag effect="light" :type="row.status === 1 ? 'success' : 'info'">
-                <span class="status-dot" :class="row.status === 1 ? 'dot-green' : 'dot-gray'"></span>
-                {{ row.status === 1 ? '启用' : '停用' }}
+              <el-tag effect="plain">
+                {{ row.engine_type === 'index_tts_2_5' ? 'IndexTTS 2.5' : 'IndexTTS 2.0' }}
               </el-tag>
             </template>
           </el-table-column>
+          <el-table-column prop="api_base_url" label="Base URL" min-width="240" />
 
           <!-- <el-table-column prop="updated_at" label="更新于" min-width="180" /> -->
 
@@ -180,23 +177,17 @@
       </template>
     </el-dialog>
 
-    <!-- TTS 弹窗（编辑） -->
-    <el-dialog title="编辑 TTS 引擎" v-model="ttsDialogVisible" width="560px">
+    <!-- TTS 弹窗 -->
+    <el-dialog :title="`配置 ${ttsForm.name}`" v-model="ttsDialogVisible" width="560px">
       <el-form :model="ttsForm" :rules="ttsRules" ref="ttsFormRef" label-width="110px">
-        <el-form-item label="名称" prop="name">
-          <el-input v-model="ttsForm.name" placeholder="如：Index_TTS" />
+        <el-form-item label="内置引擎">
+          <el-tag effect="plain">
+            {{ ttsForm.engine_type === 'index_tts_2_5' ? 'IndexTTS 2.5' : 'IndexTTS 2.0' }}
+          </el-tag>
         </el-form-item>
-        <el-form-item label="Base URL">
-          <el-input v-model="ttsForm.api_base_url" placeholder="可留空" />
+        <el-form-item label="Base URL" prop="api_base_url">
+          <el-input v-model="ttsForm.api_base_url" placeholder="如：http://127.0.0.1:8300" />
         </el-form-item>
-        <el-form-item label="API Key">
-          <el-input v-model="ttsForm.api_key" placeholder="可留空" show-password />
-        </el-form-item>
-
-        <el-form-item label="状态">
-          <el-switch v-model="ttsForm.status" :active-value="1" :inactive-value="0" />
-        </el-form-item>
-
       </el-form>
 
       <template #footer>
@@ -425,14 +416,13 @@ const ttsList = ref([])
 const ttsDialogVisible = ref(false)
 const ttsFormRef = ref()
 const ttsForm = ref({
-  id: 1,
+  id: null,
   name: '',
   api_base_url: '',
-  api_key: '',
-  status: 1,
+  engine_type: 'index_tts_2_0',
 })
 const ttsRules = {
-  name: [{ required: true, message: '请输入名称', trigger: 'blur' }]
+  api_base_url: [{ required: true, message: '请输入 Base URL', trigger: 'blur' }]
 }
 
 const loadTTS = async () => {
@@ -441,7 +431,7 @@ const loadTTS = async () => {
 }
 
 function openTTSDialog(row) {
-  ttsForm.value = { ...row }
+  ttsForm.value = { ...row, engine_type: row.engine_type || 'index_tts_2_0' }
   ttsDialogVisible.value = true
 }
 
@@ -449,8 +439,13 @@ function submitTTS() {
   ttsFormRef.value.validate(async (valid) => {
     if (!valid) return
     try {
-      await updateTTSProvider(ttsForm.value.id, ttsForm.value)
-      ElMessage.success('已更新')
+      const res = await updateTTSProvider(ttsForm.value.id, {
+        api_base_url: ttsForm.value.api_base_url,
+      })
+      if (res?.code !== 200) {
+        return ElMessage.error(res?.message || '操作失败')
+      }
+      ElMessage.success('URL 已更新')
       ttsDialogVisible.value = false
       await loadTTS()
     } catch {

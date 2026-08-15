@@ -16,7 +16,7 @@ class TTSProviderRepository:
 
     def get_all(self) -> Sequence[TTSProviderPO]:
         """获取tts下所有tts供应商"""
-        return self.db.execute(select(TTSProviderPO)).scalars().all()
+        return self.db.execute(select(TTSProviderPO).order_by(TTSProviderPO.id)).scalars().all()
 
 
     def create(self, data: TTSProviderPO) -> TTSProviderPO:

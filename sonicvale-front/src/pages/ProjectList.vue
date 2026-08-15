@@ -112,6 +112,15 @@
                         <el-option v-for="tts in ttsProviders" :key="tts.id" :label="tts.name" :value="tts.id" />
                     </el-select>
                 </el-form-item>
+                <el-form-item v-if="selectedTTSEngineType === 'index_tts_2_5'" label="合成语言">
+                    <el-select v-model="form.tts_language" style="width: 100%;">
+                        <el-option label="中文" value="ZH" />
+                        <el-option label="英语" value="EN" />
+                        <el-option label="日语" value="JA" />
+                        <el-option label="阿拉伯语" value="AR" />
+                        <el-option label="西班牙语" value="ES" />
+                    </el-select>
+                </el-form-item>
                 <!-- 提示词模板 -->
                 <el-form-item label="提示词模板" prop="prompt_id">
                     <el-select v-model="form.prompt_id" placeholder="请选择提示词模板" clearable style="width: 100%;">
@@ -148,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElLoading } from 'element-plus'
 // import { Plus, Delete } from '@element-plus/icons-vue'
 import { fetchProjects, createProject, deleteProject } from '../api/project'
@@ -167,6 +176,7 @@ const form = ref({
     llm_provider_id: null,
     llm_model: null,
     tts_provider_id: null,
+    tts_language: 'ZH',
     prompt_id: null,
     is_precise_fill: 0,      // ✅ 新增字段
     project_root_path: null,
@@ -186,6 +196,9 @@ const formRef = ref(null)
 const llmProviders = ref([])
 const availableModels = ref([])
 const ttsProviders = ref([])
+const selectedTTSEngineType = computed(() => {
+    return ttsProviders.value.find(item => item.id === form.value.tts_provider_id)?.engine_type || ''
+})
 
 // 加载项目和 Provider 数据
 onMounted(async () => {
@@ -258,6 +271,7 @@ const handleSubmit = () => {
                         llm_provider_id: null,
                         llm_model: null,
                         tts_provider_id: null,
+                        tts_language: 'ZH',
                         prompt_id: null,
                         is_precise_fill: 0,
                         project_root_path: null,

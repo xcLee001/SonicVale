@@ -1,5 +1,5 @@
 
-from sqlalchemy import Column, Integer, Integer, String, Text, Enum, ForeignKey, DateTime, JSON, Index
+from sqlalchemy import Column, Integer, String, Text, Enum, ForeignKey, DateTime, JSON, Index, Float
 from datetime import datetime, timezone
 
 from app.db.database import Base
@@ -17,6 +17,8 @@ class ProjectPO(Base):
     llm_provider_id = Column(Integer, nullable=True)  # LLM提供商
     llm_model = Column(String(255), nullable=True)  # 指定模型
     tts_provider_id = Column(Integer, nullable=True)  # TTS提供商
+    # IndexTTS 2.5 合成语言；旧 TTS 会忽略该字段
+    tts_language = Column(String(8), default="ZH", nullable=False)
     prompt_id = Column(Integer, nullable=True) # 关联的prompt
     # 是否开启精准填充
     is_precise_fill = Column(Integer, default=0, nullable=False)
@@ -129,6 +131,8 @@ class LinePO(Base):
     # 情绪 和 强弱
     emotion_id = Column(Integer, nullable=True)
     strength_id = Column(Integer, nullable=True)
+    # IndexTTS 2.5 原生时长系数：小于 1 加快，大于 1 放慢
+    tts_duration_factor = Column(Float, default=1.0, nullable=False)
 
     # 9.1 新增
 
@@ -196,6 +200,8 @@ class TTSProviderPO(Base):
     name = Column(String(255), nullable=False, unique=True)
     api_base_url = Column(String(500), nullable=False)
     api_key = Column(String(500), nullable=True)
+    # 用稳定类型标识选择具体的 TTS 协议适配器，不能依赖可编辑的名称
+    engine_type = Column(String(50), default="index_tts_2_0", nullable=False)
     # voice_list = Column(JSON, nullable=True)
     status = Column(Integer, default=1, nullable=False)
 

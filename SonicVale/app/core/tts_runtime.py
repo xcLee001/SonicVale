@@ -1,5 +1,6 @@
 # app/tts_worker.py
 import asyncio
+from functools import partial
 from fastapi import FastAPI
 from markdown_it.rules_block import reference
 
@@ -95,18 +96,25 @@ async def tts_worker(app: FastAPI):
             emo_vector = emotion_text_to_vector(emotion.name, strength.name)
 
             project = project_service.get_project(project_id)
+            line = line_service.get_line(dto.id)
+            duration_factor = line.tts_duration_factor if line else 1.0
 
             loop = asyncio.get_running_loop()
+            generate_task = partial(
+                line_service.generate_audio,
+                reference_path,
+                project.tts_provider_id,
+                dto.text_content,
+                emo_text,
+                emo_vector,
+                dto.audio_path,
+                lang=project.tts_language or "ZH",
+                duration_factor=duration_factor or 1.0,
+            )
             await asyncio.wait_for(
                 loop.run_in_executor(
                     ex,
-                    line_service.generate_audio,
-                    reference_path,
-                    project.tts_provider_id,
-                    dto.text_content,
-                    emo_text,
-                    emo_vector,
-                    dto.audio_path
+                    generate_task,
                 ),
                 timeout=TTS_TIMEOUT_SECONDS
             )

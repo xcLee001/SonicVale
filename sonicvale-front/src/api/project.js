@@ -16,6 +16,7 @@ export function fetchProjects() {
         updatedAtRaw: p.updated_at,  // 原始时间戳（排序用）
         llmModel: p.llm_model,
         ttsProviderId: p.tts_provider_id,
+        ttsLanguage: p.tts_language || 'ZH',
         llmProviderId: p.llm_provider_id,
         promptId: p.prompt_id,
         is_precise_fill: p.is_precise_fill,  // ✅ 新增字段

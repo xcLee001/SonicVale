@@ -17,6 +17,7 @@ class LineEntity:
 
     emotion_id : Optional[int] = None
     strength_id : Optional[int] = None
+    tts_duration_factor: float = 1.0
 
     audio_path : Optional[str] = None
     subtitle_path : Optional[str] = None

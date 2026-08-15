@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Literal, Optional
 
 
 class ProjectCreateDTO(BaseModel):
@@ -10,6 +10,7 @@ class ProjectCreateDTO(BaseModel):
     llm_provider_id: Optional[int] = None
     llm_model: Optional[str] = None
     tts_provider_id: Optional[int] = None
+    tts_language: Literal["ZH", "EN", "JA", "AR", "ES"] = "ZH"
     prompt_id: Optional[int] = None
     # 精准填充
     is_precise_fill: Optional[int] = None
@@ -23,6 +24,7 @@ class ProjectResponseDTO(BaseModel):
     llm_provider_id: Optional[int] = None
     llm_model: Optional[str] = None
     tts_provider_id: Optional[int] = None
+    tts_language: Literal["ZH", "EN", "JA", "AR", "ES"] = "ZH"
     prompt_id: Optional[int] = None
     # 精准填充
     is_precise_fill : Optional[int] = None

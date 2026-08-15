@@ -446,7 +446,7 @@ const cellStyle = () => ({ padding: '10px 12px' })
 // 加载 TTS
 const loadTTS = async () => {
   ttsProviders.value = await fetchTTSProviders()
-  const def = ttsProviders.value.find(t => t.id === 1) || ttsProviders.value[0]
+  const def = ttsProviders.value.find(t => t.status === 1) || ttsProviders.value[0]
   if (def) {
     selectedTTS.value = def.id
     await loadVoices()
@@ -466,7 +466,7 @@ function openDialog(row) {
       id: row.id,
       name: row.name,
       reference_path: row.reference_path || '',
-      tts_provider_id: row.tts_provider_id || selectedTTS.value || 1,
+      tts_provider_id: row.tts_provider_id || selectedTTS.value || null,
       tags: row.description ? row.description.split(',') : []
     }
   } else {
@@ -474,7 +474,7 @@ function openDialog(row) {
       id: null,
       name: '',
       reference_path: '',
-      tts_provider_id: selectedTTS.value || 1,
+      tts_provider_id: selectedTTS.value || null,
       tags: []
     }
   }

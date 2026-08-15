@@ -1,0 +1,8 @@
+C:\Users\lxc18\miniconda3\Lib\site-packages\pydantic\_migration.py:283: UserWarning: `pydantic.generics:GenericModel` has been moved to `pydantic.BaseModel`.
+  warnings.warn(f'`{import_path}` has been moved to `{new_location}`.')
+2026-08-15 17:48:13,340 - INFO - 日志文件路径: C:\Users\lxc18\SonicVale\app.log
+INFO:     Started server process [7336]
+INFO:     Waiting for application startup.
+2026-08-15 17:48:13,405 - INFO - custom_params 列已存在，跳过。
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8200 (Press CTRL+C to quit)

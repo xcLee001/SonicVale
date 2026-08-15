@@ -115,7 +115,9 @@ class LineService:
         # 获取强度id
         strength_id = strengths_dict.get(line.strength_name)
         res = self.repository.create(LinePO(text_content=line.text_content, role_id=role.id,
-                                           chapter_id=chapter_id,line_order = index+1,emotion_id=emotion_id,strength_id=strength_id))
+                                           chapter_id=chapter_id,line_order = index+1,emotion_id=emotion_id,
+                                           strength_id=strength_id,
+                                           tts_duration_factor=line.tts_duration_factor))
 
         # 新增台词,这里搞个audio_path
 
@@ -142,7 +144,17 @@ class LineService:
         return True
     # 生成音频（服务器和本地两种方式）
 
-    def generate_audio(self, reference_path: str,tts_provider_id,content,emo_text:str,emo_vector:list[float],save_path= None):
+    def generate_audio(
+            self,
+            reference_path: str,
+            tts_provider_id,
+            content,
+            emo_text: str,
+            emo_vector: list[float],
+            save_path=None,
+            lang: str = "ZH",
+            duration_factor: float = 1.0,
+    ):
         #
         tts_provider = self.tts_provider_repository.get_by_id(tts_provider_id)
         if tts_provider is None:
@@ -151,7 +163,10 @@ class LineService:
         if not tts_provider.api_base_url:
             raise Exception("TTS服务地址未配置，请先在配置中心设置TTS服务")
             
-        tts_engine = TTSEngine(tts_provider.api_base_url)
+        tts_engine = TTSEngine(
+            tts_provider.api_base_url,
+            getattr(tts_provider, "engine_type", "index_tts_2_0"),
+        )
         
         # 检查参考音频路径是否有效
         if not reference_path:
@@ -176,7 +191,15 @@ class LineService:
                     raise Exception(f"上传参考音频失败: {upload_result.get('msg', '未知错误')}")
             
             # 合成音频
-            return tts_engine.synthesize(content, reference_path, emo_text, emo_vector, save_path)
+            return tts_engine.synthesize(
+                content,
+                reference_path,
+                emo_text,
+                emo_vector,
+                save_path,
+                lang=lang,
+                duration_factor=duration_factor,
+            )
 
     # 将角色role_id下所有台词的role_id都置位空
     def clear_role_id(self, role_id: int):

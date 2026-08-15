@@ -1,0 +1,3 @@
+INFO:     127.0.0.1:61673 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61679 - "GET /tts_providers/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61680 - "GET /prompts/ HTTP/1.1" 200 OK

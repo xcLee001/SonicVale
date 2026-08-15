@@ -20,6 +20,16 @@ def get_service(db: Session = Depends(get_db)) -> TTSProviderService:
     return TTSProviderService(repository)
 
 
+# 测试 TTS 是否正常。静态路由必须放在 /{tts_provider_id} 之前。
+@router.post("/test", response_model=Res)
+def test_tts_provider(dto: TTSProviderCreateDTO, service: TTSProviderService = Depends(get_service)):
+    entity = TTSProviderEntity(**dto.model_dump())
+    success = service.test_tts_provider(entity)
+    if success:
+        return Res(data=None, code=200, message="测试成功")
+    return Res(data=None, code=400, message="测试失败")
+
+
 # 按id查找
 @router.get("/{tts_provider_id}", response_model=Res[TTSProviderResponseDTO],
             summary="查询TTS供应商",
@@ -43,8 +53,8 @@ def get_all_tts_providers(service: TTSProviderService = Depends(get_service)):
 
 # ------------------- 修改TTS供应商 -------------------
 @router.put("/{tts_provider_id}", response_model=Res[TTSProviderCreateDTO],
-            summary="修改TTS供应商",
-            description="根据TTS供应商ID修改TTS供应商信息")
+            summary="配置内置TTS服务地址",
+            description="内置TTS引擎固定，只允许修改服务地址")
 def update_tts_provider(tts_provider_id: int, dto: TTSProviderCreateDTO, service: TTSProviderService = Depends(get_service)):
 
     # 先根据id进行查找
@@ -57,21 +67,6 @@ def update_tts_provider(tts_provider_id: int, dto: TTSProviderCreateDTO, service
         return Res(data=dto, code=200, message="更新成功")
     else:
         return Res(data=None, code=400, message="更新失败")
-
-
-
-# 测试tts是否正常
-@router.post("/test", response_model=Res)
-def test_tts_provider(dto: TTSProviderCreateDTO, service: TTSProviderService = Depends(get_service)):
-    """
-    测试tts是否正常
-    """
-    entity  = TTSProviderEntity(**dto.dict())
-    success = service.test_tts_provider(entity)
-    if success:
-        return Res(data=None, code=200, message="测试成功")
-    else:
-        return Res(data=None, code=400, message="测试失败")
 
 
 

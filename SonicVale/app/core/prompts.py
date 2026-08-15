@@ -140,6 +140,34 @@ def get_prompt_str():
     return textwrap.dedent(prompt)
 
 
+def get_index_tts_25_prompt_str():
+    """在原默认拆分规则上增加 IndexTTS 2.5 时长系数输出。"""
+    prompt = get_prompt_str()
+    duration_rules = """
+时长系数识别规则：
+1. 每条记录必须输出数值字段 tts_duration_factor，供 IndexTTS 2.5 原生控制生成时长。
+2. tts_duration_factor 必须在0.5到2.0之间；小于1表示加快，大于1表示放慢。
+3. 无明显快慢要求时使用1.0，优先从0.85、0.95、1.0、1.1、1.2中选择。
+4. 根据语境、停顿、紧迫程度和说话节奏判断，不要仅根据情绪名称机械赋值。
+""".strip()
+    prompt = prompt.replace(
+        "特殊情况处理：",
+        f"{duration_rules}\n\n特殊情况处理：",
+        1,
+    )
+    prompt = prompt.replace(
+        '"strength_name": "中等"},',
+        '"strength_name": "中等", "tts_duration_factor": 1.0},',
+        1,
+    )
+    prompt = prompt.replace(
+        '"strength_name": "中等"}\n',
+        '"strength_name": "中等", "tts_duration_factor": 0.95}\n',
+        1,
+    )
+    return prompt
+
+
 
 
 def get_auto_fix_json_prompt(json_str: str) -> str:

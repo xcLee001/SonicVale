@@ -586,6 +586,15 @@
                         <el-option v-for="tts in ttsProviders" :key="tts.id" :label="tts.name" :value="tts.id" />
                     </el-select>
                 </el-form-item>
+                <el-form-item v-if="selectedSettingsTTSEngineType === 'index_tts_2_5'" label="合成语言">
+                    <el-select v-model="settingsForm.tts_language" style="width: 100%;">
+                        <el-option label="中文" value="ZH" />
+                        <el-option label="英语" value="EN" />
+                        <el-option label="日语" value="JA" />
+                        <el-option label="阿拉伯语" value="AR" />
+                        <el-option label="西班牙语" value="ES" />
+                    </el-select>
+                </el-form-item>
                 <!-- 提示词模板 -->
                 <el-form-item label="提示词模版">
                     <el-select v-model="settingsForm.prompt_id" placeholder="请选择提示词" clearable filterable>
@@ -734,7 +743,8 @@ import {
     ElText,
     ElButton,
     ElPopconfirm,
-    ElSwitch
+    ElSwitch,
+    ElInputNumber
 } from 'element-plus'
 const emotionLocked = ref(false)
 const strengthLocked = ref(false)
@@ -945,6 +955,7 @@ const settingsForm = ref({
     llm_provider_id: null,
     llm_model: null,
     tts_provider_id: null,
+    tts_language: 'ZH',
     prompt_id: null,
     is_precise_fill: null,      // ✅ 新增字段，默认 0
     project_root_path: null,
@@ -959,6 +970,9 @@ const settingsRules = {
 const llmProviders = ref([])
 const availableModels = ref([])
 const ttsProviders = ref([])
+const selectedSettingsTTSEngineType = computed(() => {
+    return ttsProviders.value.find(item => item.id === settingsForm.value.tts_provider_id)?.engine_type || ''
+})
 const prompts = ref([])
 
 // 打开“项目设置”弹窗：预填现有项目数据 + 拉取 Provider
@@ -975,6 +989,7 @@ async function openProjectSettings() {
         llm_provider_id: project.value?.llmProviderId ?? project.value?.llm_provider_id ?? null,
         llm_model: project.value?.llmModel ?? project.value?.llm_model ?? null,
         tts_provider_id: project.value?.ttsProviderId ?? project.value?.tts_provider_id ?? null,
+        tts_language: project.value?.ttsLanguage ?? project.value?.tts_language ?? 'ZH',
         prompt_id: project.value?.promptId ?? project.value?.prompt_id ?? null,
         is_precise_fill: project.value?.is_precise_fill ?? null,
         project_root_path: project.value?.project_root_path ?? null
@@ -1044,6 +1059,7 @@ async function saveProjectSettings() {
             llm_provider_id: settingsForm.value.llm_provider_id,
             llm_model: settingsForm.value.llm_model,
             tts_provider_id: settingsForm.value.tts_provider_id,
+            tts_language: settingsForm.value.tts_language || 'ZH',
             prompt_id: settingsForm.value.prompt_id,
             is_precise_fill: settingsForm.value.is_precise_fill,
             project_root_path: settingsForm.value.project_root_path
@@ -1407,6 +1423,7 @@ async function generateOne(row) {
             strength_id: row.strength_id,
             text_content: row.text_content,
             audio_path: row.audio_path,
+            tts_duration_factor: Number(row.tts_duration_factor ?? 1.0),
         }
 
         console.log('准备生成音频:', body)
@@ -1780,7 +1797,8 @@ async function insertBelow(row) {
         line_order: 0, // 随便，后面统一重排
         is_done: 0,
         emotion_id: row.emotion_id,
-        strength_id: row.strength_id
+        strength_id: row.strength_id,
+        tts_duration_factor: Number(row.tts_duration_factor ?? 1.0),
     })
     if (createRes?.code !== 200 || !createRes.data?.id) {
         return ElMessage.error(createRes?.message || '插入失败')
@@ -1800,6 +1818,7 @@ async function insertBelow(row) {
         text_content: '',
         status: 'pending',
         is_done: 0,
+        tts_duration_factor: Number(row.tts_duration_factor ?? 1.0),
         // 情绪和强度继承当前行
 
     }
@@ -1834,7 +1853,8 @@ async function insertAtTop() {
         role_id: null,
         text_content: '',
         status: 'pending',
-        line_order: 0 // 随便，后面统一重排
+        line_order: 0, // 随便，后面统一重排
+        tts_duration_factor: 1.0,
     })
     if (createRes?.code !== 200 || !createRes.data?.id) {
         return ElMessage.error(createRes?.message || '插入失败')
@@ -1847,7 +1867,8 @@ async function insertAtTop() {
         chapter_id: activeChapterId.value,
         role_id: null,
         text_content: '',
-        status: 'pending'
+        status: 'pending',
+        tts_duration_factor: 1.0
     }
 
     lines.value.unshift(newLine) // 插到数组开头
@@ -2464,6 +2485,26 @@ async function updateLineStrength(row) {
     }
 }
 
+async function updateLineDurationFactor(row) {
+    if (!row?.id) return
+    const value = Math.min(2.0, Math.max(0.5, Number(row.tts_duration_factor ?? 1.0)))
+    row.tts_duration_factor = value
+    try {
+        const res = await lineAPI.updateLine(row.id, {
+            chapter_id: row.chapter_id,
+            tts_duration_factor: value,
+            is_done: 0,
+        })
+        if (res?.code === 200) {
+            row.is_done = 0
+        } else {
+            ElMessage.error(res?.message || '时长系数更新失败')
+        }
+    } catch (error) {
+        ElMessage.error(error?.message || '时长系数更新失败')
+    }
+}
+
 onMounted(() => {
     loadEnums()
 })
@@ -3075,6 +3116,33 @@ const lineColumns = reactive([
             ]),
     },
     {
+        key: 'tts_duration_factor',
+        title: '时长倍率',
+        width: 100,
+        minWidth: 90,
+        maxWidth: 120,
+        align: 'center',
+        headerCellRenderer: () => h('div', { class: 'duration-factor-header' }, [
+            h('span', { class: 'duration-factor-header-title' }, '时长倍率'),
+            h('span', { class: 'duration-factor-header-tip' }, '（越小越快）'),
+        ]),
+        cellRenderer: ({ rowData }) =>
+            h(ElInputNumber, {
+                modelValue: Number(rowData.tts_duration_factor ?? 1.0),
+                min: 0.5,
+                max: 2.0,
+                step: 0.05,
+                precision: 2,
+                size: 'small',
+                controlsPosition: 'right',
+                style: { width: '84px' },
+                'onUpdate:modelValue': (value) => {
+                    rowData.tts_duration_factor = value ?? 1.0
+                },
+                onChange: () => updateLineDurationFactor(rowData),
+            }),
+    },
+    {
         key: 'audio',
         title: '试听 / 处理',
         align: 'center',
@@ -3307,7 +3375,7 @@ function attachResizableHeader(col) {
 
 // 3) 指定哪些列可拖（按你的 key 来）
 ;[
-    'role_id', 'text_content', 'emotion_id', 'strength_id',
+    'role_id', 'text_content', 'emotion_id', 'strength_id', 'tts_duration_factor',
     'audio', 'edit', 'status', 'actions'
 ].forEach(k => {
     const c = lineColumns.find(col => col.key === k)
@@ -4293,6 +4361,28 @@ function restoreLastChapter() {
 
 :deep(.el-table-v2__cell) {
     padding: 4px 8px;
+}
+
+:deep(.duration-factor-header) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.15;
+}
+
+:deep(.duration-factor-header-title) {
+    color: var(--el-text-color-primary);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+:deep(.duration-factor-header-tip) {
+    margin-top: 3px;
+    color: var(--el-text-color-secondary);
+    font-size: 10px;
+    font-weight: 400;
+    white-space: nowrap;
 }
 
 .status-header {

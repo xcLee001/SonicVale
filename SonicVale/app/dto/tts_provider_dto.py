@@ -9,6 +9,7 @@ class TTSProviderCreateDTO(BaseModel):
     id: Optional[int] = None
     api_base_url: Optional[str] = None
     api_key: Optional[str] = None
+    engine_type: Optional[str] = "index_tts_2_0"
     status: Optional[int] = None
 
 
@@ -19,6 +20,7 @@ class TTSProviderResponseDTO(BaseModel):
     id: Optional[int] = None
     api_base_url : Optional[str] = None
     api_key: Optional[str] = None
+    engine_type: Optional[str] = "index_tts_2_0"
     status : Optional[int] = None
     updated_at: Optional[datetime] = None
     created_at: Optional[datetime] = None

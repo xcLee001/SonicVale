@@ -4,12 +4,16 @@ import os
 import logging
 
 class TTSEngine:
-    def __init__(self, base_url: str):
+    INDEX_TTS_25 = "index_tts_2_5"
+    SUPPORTED_LANGUAGES = {"ZH", "EN", "JA", "AR", "ES"}
+
+    def __init__(self, base_url: str, engine_type: str = "index_tts_2_0"):
         """
         初始化 TTS 引擎
         :param base_url: TTS 服务的基础 URL，如 http://127.0.0.1:8000
         """
         self.base_url = base_url.rstrip("/")
+        self.engine_type = engine_type
 
     def synthesize(
         self,
@@ -17,7 +21,9 @@ class TTSEngine:
         filename: str,
         emo_text: Optional[str] = None,
         emo_vector: Optional[List[float]] = None,
-        save_path: Optional[str] = None
+        save_path: Optional[str] = None,
+        lang: str = "ZH",
+        duration_factor: float = 1.0,
     ) -> bytes:
         """
         调用 /v2/synthesize 接口进行语音合成
@@ -32,13 +38,28 @@ class TTSEngine:
 
         payload = {"text": text, "audio_path": filename}
 
-        if emo_vector is not None:
+        if self.engine_type == self.INDEX_TTS_25:
+            vector = list(emo_vector) if emo_vector is not None else [0.0] * 8
+            if len(vector) != 8:
+                raise ValueError("IndexTTS 2.5 的情绪向量必须为 8 维")
+
+            normalized_lang = (lang or "ZH").upper()
+            if normalized_lang not in self.SUPPORTED_LANGUAGES:
+                raise ValueError(f"IndexTTS 2.5 不支持语言: {normalized_lang}")
+
+            payload.update({
+                "emo_vector": vector,
+                "lang": normalized_lang,
+                "duration_factor": min(2.0, max(0.5, float(duration_factor or 1.0))),
+            })
+        elif emo_vector is not None:
             payload["emo_vector"] = emo_vector
         elif emo_text:
             payload["emo_text"] = emo_text
 
         try:
-            resp = requests.post(url, json=payload, timeout=120)
+            timeout = 1200 if self.engine_type == self.INDEX_TTS_25 else 120
+            resp = requests.post(url, json=payload, timeout=timeout)
             if resp.status_code != 200:
                 # 尝试解析错误信息
                 try:

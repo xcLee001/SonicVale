@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import getConfigPath
-from app.core.prompts import get_prompt_str
+from app.core.prompts import get_index_tts_25_prompt_str, get_prompt_str
 from app.core.tts_runtime import tts_worker
 from app.core.ws_manager import manager
 from app.db.database import Base, engine, SessionLocal, get_db
@@ -152,6 +152,42 @@ def add_project_root_path_column():
 
             conn.commit()
 
+
+def add_tts_provider_engine_type_column():
+    """区分 IndexTTS 2.0 与 2.5，兼容已有 Provider。"""
+    with engine.begin() as conn:
+        result = conn.execute(text("PRAGMA table_info(tts_provider)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "engine_type" not in columns:
+            conn.execute(text(
+                "ALTER TABLE tts_provider "
+                "ADD COLUMN engine_type TEXT NOT NULL DEFAULT 'index_tts_2_0'"
+            ))
+
+
+def add_project_tts_language_column():
+    """IndexTTS 2.5 项目级合成语言。"""
+    with engine.begin() as conn:
+        result = conn.execute(text("PRAGMA table_info(projects)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "tts_language" not in columns:
+            conn.execute(text(
+                "ALTER TABLE projects "
+                "ADD COLUMN tts_language TEXT NOT NULL DEFAULT 'ZH'"
+            ))
+
+
+def add_line_tts_duration_factor_column():
+    """IndexTTS 2.5 台词级原生时长系数。"""
+    with engine.begin() as conn:
+        result = conn.execute(text("PRAGMA table_info(lines)"))
+        columns = [row[1] for row in result.fetchall()]
+        if "tts_duration_factor" not in columns:
+            conn.execute(text(
+                "ALTER TABLE lines "
+                "ADD COLUMN tts_duration_factor REAL NOT NULL DEFAULT 1.0"
+            ))
+
 def get_tts_service(db: Session = Depends(get_db)) -> TTSProviderService:
     return TTSProviderService(TTSProviderRepository(db))
 
@@ -173,6 +209,10 @@ async def startup_event():
     add_is_precise_fill_column()
     # v1.0.7 添加项目的字段 project_root_path
     add_project_root_path_column()
+    # IndexTTS 2.5：Provider 类型、项目语言、台词原生时长系数
+    add_tts_provider_engine_type_column()
+    add_project_tts_language_column()
+    add_line_tts_duration_factor_column()
 
     # 2) 初始化共享运行时
     try:
@@ -194,7 +234,7 @@ async def startup_event():
     try:
         try:
             tts_service = get_tts_service(db)
-            tts_service.create_default_tts_provider()
+            tts_service.ensure_builtin_tts_providers()
         except Exception as e:
             logging.warning("⚠️ 默认 TTS provider 初始化失败: %s", e)
 
@@ -238,6 +278,14 @@ async def startup_event():
                     default_prompt_content = get_prompt_str()
                     default_prompt.content = default_prompt_content
                     prompt_service.update_prompt(default_prompt.id, default_prompt.__dict__)
+
+            index_tts_25_prompt = prompt_service.get_prompt_by_name("IndexTTS 2.5 拆分台词提示词")
+            if not index_tts_25_prompt:
+                logging.info("创建 IndexTTS 2.5 默认提示词")
+                prompt_service.create_index_tts_25_default_prompt()
+            else:
+                index_tts_25_prompt.content = get_index_tts_25_prompt_str()
+                prompt_service.update_prompt(index_tts_25_prompt.id, index_tts_25_prompt.__dict__)
 
         except Exception as e:
             logging.warning("⚠️ 默认提示词创建失败: %s", e)

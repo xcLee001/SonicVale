@@ -44,7 +44,7 @@ export function fetchLLMProviderModels(data) {
 
 /**
  * TTS Provider
- * 说明：只有一个（id=1），不可新增/删除，只能查找和更新
+ * TTS Provider 由系统内置，用户只配置服务 URL。
  */
 
 // 获取 TTS 提供商
@@ -59,7 +59,7 @@ export function fetchTTSProviders() {
   })
 }
 
-// 更新 TTS 提供商（id 固定为 1）
+// 更新 TTS 提供商
 export function updateTTSProvider(id, payload) {
   return request.put(`/tts_providers/${id}`, payload)
 }

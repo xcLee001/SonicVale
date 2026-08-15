@@ -3,7 +3,7 @@ from sqlalchemy import Sequence
 
 from app.core.enums import TaskEnum
 from app.core.llm_engine import LLMEngine
-from app.core.prompts import get_prompt_str
+from app.core.prompts import get_index_tts_25_prompt_str, get_prompt_str
 from app.entity.prompt_entity import PromptEntity
 from app.models.po import PromptPO
 
@@ -35,6 +35,14 @@ class PromptService:
         name = "默认拆分台词提示词"
         description = "默认拆分台词提示词"
         content = get_prompt_str()
+        self.create_prompt(PromptEntity(name=name, description=description, content=content, task=task))
+        return True
+
+    def create_index_tts_25_default_prompt(self):
+        task = TaskEnum.DUBBING
+        name = "IndexTTS 2.5 拆分台词提示词"
+        description = "为每条台词生成 IndexTTS 2.5 原生时长系数"
+        content = get_index_tts_25_prompt_str()
         self.create_prompt(PromptEntity(name=name, description=description, content=content, task=task))
         return True
 

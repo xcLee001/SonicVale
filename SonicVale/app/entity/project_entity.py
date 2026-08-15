@@ -14,6 +14,7 @@ class ProjectEntity:
     llm_provider_id: Optional[int] = None
     llm_model: Optional[str] = None
     tts_provider_id: Optional[int] = None
+    tts_language: str = "ZH"
     prompt_id: Optional[int] = None # 提示词
     # 精准填充
     is_precise_fill: Optional[int] = None

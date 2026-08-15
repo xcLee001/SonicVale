@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+import math
+
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 
 class LineInitDTO(BaseModel):
@@ -8,6 +10,19 @@ class LineInitDTO(BaseModel):
     text_content: str
     emotion_name: Optional[str] = None
     strength_name: Optional[str] = None
+    tts_duration_factor: float = 1.0
+
+    @field_validator("tts_duration_factor", mode="before")
+    @classmethod
+    def normalize_duration_factor(cls, value):
+        """LLM 输出异常时回退到安全值，避免整段台词解析失败。"""
+        try:
+            factor = float(value)
+        except (TypeError, ValueError):
+            return 1.0
+        if not math.isfinite(factor):
+            return 1.0
+        return min(2.0, max(0.5, factor))
 
 
 class LineOrderDTO(BaseModel):
@@ -34,6 +49,7 @@ class LineCreateDTO(BaseModel):
 
     emotion_id: Optional[int] = None
     strength_id: Optional[int] = None
+    tts_duration_factor: float = Field(default=1.0, ge=0.5, le=2.0)
 
     audio_path : Optional[str] = None
     status : Optional[str] = None
@@ -50,6 +66,7 @@ class LineResponseDTO(BaseModel):
 
     emotion_id: Optional[int] = None
     strength_id: Optional[int] = None
+    tts_duration_factor: float = 1.0
 
     audio_path : Optional[str] = None
     status : Optional[str] = None
