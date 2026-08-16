@@ -1,4 +1,3 @@
-from numba.scripts.generate_lower_listing import description
 from sqlalchemy import Sequence
 
 from app.core.enums import TaskEnum

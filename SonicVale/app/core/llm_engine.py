@@ -7,8 +7,6 @@ import re
 import time
 import random
 from openai import OpenAI
-from numba.cuda import stream
-
 from app.core.prompts import get_auto_fix_json_prompt
 
 

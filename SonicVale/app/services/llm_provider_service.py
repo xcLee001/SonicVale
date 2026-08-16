@@ -2,7 +2,6 @@ import json
 import logging
 
 import requests
-from aiohttp.abc import HTTPException
 from sqlalchemy import Sequence
 
 from app.core.llm_engine import LLMEngine

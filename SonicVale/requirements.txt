@@ -1,12 +1,13 @@
 fastapi==0.119.0
-numba==0.61.2
-numpy==2.3.3
+numpy==2.2.6
 openai==2.8.0
 openpyxl==3.1.5
 pydantic==2.12.2
 pypinyin==0.55.0
+python-multipart==0.0.20
 Requests==2.32.5
 soundfile==0.13.1
 SQLAlchemy==2.0.44
 starlette==0.48.0
 uvicorn==0.37.0
+websockets==15.0.1
